@@ -1,0 +1,19 @@
+[package]
+name = "overture-midi"
+description = "MIDI I/O for Overture, with hot-plug detection and device-profile-aware input handling. Wraps midir for CoreMIDI / WinMM / ALSA coverage."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+authors.workspace = true
+readme.workspace = true
+categories = ["multimedia::audio", "hardware-support"]
+keywords = ["midi", "midir", "live-performance"]
+
+[dependencies]
+midir.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+overture-rt.workspace = true

@@ -1,0 +1,63 @@
+[workspace]
+resolver = "3"
+members = [
+    "crates/overture",
+    "crates/overture-audio",
+    "crates/overture-midi",
+    "crates/overture-plugin",
+    "crates/overture-dsp",
+    "crates/overture-rt",
+    "crates/overture-ipc",
+]
+
+[workspace.package]
+version = "0.0.1"
+edition = "2024"
+rust-version = "1.85"
+license = "Apache-2.0"
+repository = "https://github.com/ChaseCondon/Overture"
+homepage = "https://github.com/ChaseCondon/Overture"
+authors = ["Chase Condon <chase.condon@gmail.com>"]
+readme = "README.md"
+
+[workspace.dependencies]
+# Audio
+cpal = "0.16"
+
+# MIDI
+midir = "0.10"
+
+# Real-time-safe primitives
+crossbeam = "0.8"
+crossbeam-channel = "0.5"
+rtrb = "0.3"
+parking_lot = "0.12"
+
+# IPC / shared memory
+shared_memory = "0.12"
+memmap2 = "0.9"
+bytemuck = { version = "1.16", features = ["derive"] }
+
+# CLAP hosting
+clack-host = "0.4"
+
+# Error handling
+thiserror = "2"
+anyhow = "1"
+
+# Logging
+tracing = "0.1"
+
+# Internal crate references
+overture-audio = { path = "crates/overture-audio", version = "0.0.1" }
+overture-midi = { path = "crates/overture-midi", version = "0.0.1" }
+overture-plugin = { path = "crates/overture-plugin", version = "0.0.1" }
+overture-dsp = { path = "crates/overture-dsp", version = "0.0.1" }
+overture-rt = { path = "crates/overture-rt", version = "0.0.1" }
+overture-ipc = { path = "crates/overture-ipc", version = "0.0.1" }
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+opt-level = 3
+debug = "line-tables-only"

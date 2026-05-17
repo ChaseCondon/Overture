@@ -1,0 +1,16 @@
+[package]
+name = "overture-dsp"
+description = "Built-in audio DSP for Overture: EQ, reverb, compression, gain staging, basic limiter. Pure Rust, allocation-free in the audio thread."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+authors.workspace = true
+readme.workspace = true
+categories = ["multimedia::audio", "no-std::no-alloc"]
+keywords = ["dsp", "audio", "eq", "reverb", "compressor"]
+
+[dependencies]
+overture-rt.workspace = true

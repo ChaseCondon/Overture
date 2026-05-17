@@ -1,0 +1,23 @@
+[package]
+name = "overture-audio"
+description = "Real-time-safe audio I/O for Overture. Wraps CPAL with a higher-level API for live-performance applications (CoreAudio on macOS, WASAPI on Windows, ASIO on Windows opt-in)."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+authors.workspace = true
+readme.workspace = true
+categories = ["multimedia::audio", "hardware-support"]
+keywords = ["audio", "cpal", "real-time", "live-performance"]
+
+[features]
+default = []
+asio = ["cpal/asio"]
+
+[dependencies]
+cpal.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+overture-rt.workspace = true

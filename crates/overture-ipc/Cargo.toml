@@ -1,0 +1,21 @@
+[package]
+name = "overture-ipc"
+description = "Shared-memory IPC primitives for out-of-process plugin sandboxing in Overture. Ring buffers for MIDI, audio, parameter changes, and a heartbeat channel between the host and child plugin processes."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+authors.workspace = true
+readme.workspace = true
+categories = ["concurrency", "multimedia::audio"]
+keywords = ["ipc", "shared-memory", "sandboxing", "plugin-host"]
+
+[dependencies]
+shared_memory.workspace = true
+memmap2.workspace = true
+bytemuck.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+overture-rt.workspace = true

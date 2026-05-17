@@ -1,0 +1,31 @@
+[package]
+name = "overture"
+description = "Cross-platform Rust audio library for live performance applications. Umbrella crate re-exporting overture-audio, overture-midi, overture-plugin, overture-dsp, overture-rt, and overture-ipc."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+authors.workspace = true
+readme.workspace = true
+categories = ["multimedia::audio", "multimedia"]
+keywords = ["audio", "midi", "vst3", "clap", "live-performance"]
+
+[features]
+default = ["audio", "midi", "rt"]
+audio = ["dep:overture-audio"]
+midi = ["dep:overture-midi"]
+plugin = ["dep:overture-plugin"]
+dsp = ["dep:overture-dsp"]
+rt = ["dep:overture-rt"]
+ipc = ["dep:overture-ipc"]
+full = ["audio", "midi", "plugin", "dsp", "rt", "ipc"]
+
+[dependencies]
+overture-audio = { workspace = true, optional = true }
+overture-midi = { workspace = true, optional = true }
+overture-plugin = { workspace = true, optional = true }
+overture-dsp = { workspace = true, optional = true }
+overture-rt = { workspace = true, optional = true }
+overture-ipc = { workspace = true, optional = true }

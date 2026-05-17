@@ -1,0 +1,20 @@
+[package]
+name = "overture-rt"
+description = "Real-time-safe primitives for Overture: lock-free queues, voice tracking, pre-allocated buffers. The audio-thread foundation other Overture crates build on."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+authors.workspace = true
+readme.workspace = true
+categories = ["concurrency", "multimedia::audio"]
+keywords = ["real-time", "lock-free", "audio", "spsc", "ring-buffer"]
+
+[dependencies]
+crossbeam.workspace = true
+crossbeam-channel.workspace = true
+rtrb.workspace = true
+parking_lot.workspace = true
+thiserror.workspace = true
