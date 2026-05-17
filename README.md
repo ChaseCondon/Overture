@@ -6,11 +6,11 @@
 
 Audio I/O, MIDI I/O, VST3 / CLAP plugin hosting, real-time DSP primitives.
 
-[![Build status](https://img.shields.io/github/actions/workflow/status/ChaseCondon/overture/ci.yml?branch=main&label=build)](https://github.com/ChaseCondon/overture/actions)
+[![Build status](https://img.shields.io/github/actions/workflow/status/ChaseCondon/Overture/ci.yml?branch=main&label=build)](https://github.com/ChaseCondon/Overture/actions)
 [![Crates.io](https://img.shields.io/crates/v/overture.svg)](https://crates.io/crates/overture)
 [![Documentation](https://docs.rs/overture/badge.svg)](https://docs.rs/overture)
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
-[![Wiki](https://img.shields.io/badge/docs-wiki-green.svg)](https://github.com/ChaseCondon/overture/wiki)
+[![Wiki](https://img.shields.io/badge/docs-wiki-green.svg)](https://github.com/ChaseCondon/Overture/wiki)
 
 </div>
 
@@ -20,7 +20,7 @@ Audio I/O, MIDI I/O, VST3 / CLAP plugin hosting, real-time DSP primitives.
 
 ## What is Overture?
 
-Overture is the audio engine that powers [Stardust](https://github.com/ChaseCondon/stardust) — but designed as a general-purpose library that any Rust audio app can use.
+Overture is the audio engine that powers [Stardust](https://github.com/ChaseCondon/Stardust) — but designed as a general-purpose library that any Rust audio app can use.
 
 It wraps the lower-level audio + MIDI ecosystem (`cpal`, `midir`) behind ergonomic abstractions and provides what most live-performance apps need on top:
 
@@ -66,7 +66,7 @@ See [`examples/`](examples/) for runnable code.
 
 ## Documentation
 
-📚 **[Project Wiki](https://github.com/ChaseCondon/overture/wiki)** — architecture, API guides, examples, contributing.
+📚 **[Project Wiki](https://github.com/ChaseCondon/Overture/wiki)** — architecture, API guides, examples, contributing.
 
 📖 **[API reference (docs.rs)](https://docs.rs/overture)** — when published.
 
@@ -87,7 +87,7 @@ See [`examples/`](examples/) for runnable code.
 
 Contributions welcome — especially around plugin format support, DSP, and platform-specific audio backends.
 
-See [CONTRIBUTING.md](CONTRIBUTING.md). Open an [issue](https://github.com/ChaseCondon/overture/issues) or [discussion](https://github.com/ChaseCondon/overture/discussions).
+See [CONTRIBUTING.md](CONTRIBUTING.md). Open an [issue](https://github.com/ChaseCondon/Overture/issues) or [discussion](https://github.com/ChaseCondon/Overture/discussions).
 
 ## License
 
