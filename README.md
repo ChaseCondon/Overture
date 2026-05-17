@@ -2,9 +2,9 @@
 
 # Overture
 
-**Cross-platform Rust audio library for live performance applications.**
+**A cross-platform Rust audio library for live performance applications.**
 
-Audio I/O, MIDI I/O, VST3 / CLAP plugin hosting, real-time DSP primitives.
+Audio I/O, MIDI I/O, VST3 and CLAP plugin hosting, real-time DSP primitives.
 
 [![Build status](https://img.shields.io/github/actions/workflow/status/ChaseCondon/Overture/ci.yml?branch=main&label=build)](https://github.com/ChaseCondon/Overture/actions)
 [![Crates.io](https://img.shields.io/crates/v/overture.svg)](https://crates.io/crates/overture)
@@ -16,32 +16,34 @@ Audio I/O, MIDI I/O, VST3 / CLAP plugin hosting, real-time DSP primitives.
 
 ---
 
-> ⚠️ **Pre-alpha.** Overture is in early-stage development. Not yet published to crates.io. API will change.
+> [!WARNING]
+> **Pre-alpha.** Overture is in early-stage development. Not yet published to crates.io. The API will change.
 
 ## What is Overture?
 
-Overture is the audio engine that powers [Stardust](https://github.com/ChaseCondon/Stardust) — but designed as a general-purpose library that any Rust audio app can use.
+Overture is the audio engine that powers [Stardust](https://github.com/ChaseCondon/Stardust), packaged as a general-purpose Rust crate so any audio application can use it.
 
-It wraps the lower-level audio + MIDI ecosystem (`cpal`, `midir`) behind ergonomic abstractions and provides what most live-performance apps need on top:
+It sits above the lower-level audio and MIDI ecosystem (`cpal`, `midir`) and provides the things live-performance applications typically need on top:
 
-- Real-time-safe audio I/O across CoreAudio, WASAPI, ASIO (Windows)
-- MIDI input/output with hot-plug detection
-- VST3 plugin hosting (via a small C++ shim, hidden behind a clean Rust API)
+- Real-time-safe audio I/O across CoreAudio, WASAPI, and ASIO (Windows)
+- MIDI input and output with hot-plug detection
+- VST3 plugin hosting via a small C++ shim, exposed through a clean Rust API
 - CLAP plugin hosting via [`clack`](https://github.com/prokopyl/clack)
 - Out-of-process plugin sandboxing for crash isolation
 - Lock-free queues and ring buffers for UI ↔ audio thread communication
-- Built-in effects DSP (EQ, reverb, compression)
+- Built-in DSP effects (EQ, reverb, compression)
 - Voice-tracking primitives to prevent stuck notes on patch changes
 
 ## Why a separate crate?
 
-Because the audio engine should be reusable by anyone, not locked inside Stardust. Build your own MainStage alternative, host plugins in your DAW, or wire up a kiosk-grade live audio kiosk — Overture is the building blocks.
+The audio engine is generally reusable, and there is no reason to lock it inside one application. Splitting it out means anyone can build a live host, a plugin chainer, or any other real-time audio tool without reimplementing the same primitives.
 
-Licensed Apache 2.0 (vs Stardust's GPL v3) precisely so it can ship inside commercial and proprietary apps.
+Overture is licensed Apache 2.0 (Stardust itself is GPL v3) so it can be embedded in commercial and proprietary applications without licensing friction.
 
-## Quickstart
+## Quick start
 
-*(Pre-release — coming with first crates.io publish.)*
+> [!NOTE]
+> Pre-release. Examples below illustrate the intended API; not yet on crates.io.
 
 ```toml
 [dependencies]
@@ -66,15 +68,14 @@ See [`examples/`](examples/) for runnable code.
 
 ## Documentation
 
-📚 **[Project Wiki](https://github.com/ChaseCondon/Overture/wiki)** — architecture, API guides, examples, contributing.
-
-📖 **[API reference (docs.rs)](https://docs.rs/overture)** — when published.
+- **[Project wiki](https://github.com/ChaseCondon/Overture/wiki)** — architecture, API guides, examples, contributing
+- **[API reference (docs.rs)](https://docs.rs/overture)** — published with the first crates.io release
 
 ## Modules
 
 | Module | Purpose |
 |---|---|
-| `audio` | CPAL wrapper, audio device management, real-time thread setup |
+| `audio` | CPAL wrapper, device management, real-time thread setup |
 | `midi` | midir wrapper, MIDI routing, hot-plug detection |
 | `plugins::vst3` | VST3 plugin hosting (C++ shim + Rust API) |
 | `plugins::clap` | CLAP plugin hosting via `clack` |
@@ -85,10 +86,10 @@ See [`examples/`](examples/) for runnable code.
 
 ## Contributing
 
-Contributions welcome — especially around plugin format support, DSP, and platform-specific audio backends.
+Contributions welcome — especially around plugin-format support, DSP, and platform-specific audio backends.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md). Open an [issue](https://github.com/ChaseCondon/Overture/issues) or [discussion](https://github.com/ChaseCondon/Overture/discussions).
 
 ## License
 
-[Apache 2.0](LICENSE). Permissive license with explicit patent grant — embed in commercial apps freely.
+[Apache 2.0](LICENSE). Permissive license with explicit patent grant — safe to embed in commercial applications.
