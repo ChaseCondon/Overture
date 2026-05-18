@@ -13,8 +13,6 @@ categories = ["concurrency", "multimedia::audio"]
 keywords = ["real-time", "lock-free", "audio", "spsc", "ring-buffer"]
 
 [dependencies]
-crossbeam.workspace = true
-crossbeam-channel.workspace = true
 rtrb.workspace = true
-parking_lot.workspace = true
-thiserror.workspace = true
+# crossbeam, crossbeam-channel, parking_lot, thiserror will be added as
+# specific primitives need them. POC scope keeps this lean.

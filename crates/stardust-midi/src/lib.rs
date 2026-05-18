@@ -57,6 +57,21 @@ pub struct MidiInputInfo {
     pub name: String,
 }
 
+/// A timestamped MIDI message, sized for `Copy` so it's cheap to move
+/// across thread boundaries via a lock-free queue (see `stardust-rt`).
+///
+/// `timestamp_ns` is whatever the platform MIDI backend reports — typically
+/// a monotonic nanosecond counter relative to the connection opening. For
+/// POC use it's enough to know "this came in before that one"; sample-
+/// accurate scheduling against the audio clock is a v0.3+ concern.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct MidiEvent {
+    /// Platform-reported nanosecond timestamp.
+    pub timestamp_ns: u64,
+    /// Parsed message.
+    pub message: MidiMessage,
+}
+
 /// A parsed MIDI channel-voice message.
 ///
 /// SysEx and realtime messages (clock, MTC, etc.) collapse into
