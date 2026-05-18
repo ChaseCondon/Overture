@@ -1,14 +1,14 @@
 <div align="center">
 
-# Overture
+# stardust-core
 
 **A cross-platform Rust audio library for live performance applications.**
 
 Audio I/O, MIDI I/O, VST3 and CLAP plugin hosting, real-time DSP primitives.
 
 [![Build status](https://img.shields.io/github/actions/workflow/status/ChaseCondon/Overture/ci.yml?branch=main&label=build)](https://github.com/ChaseCondon/Overture/actions)
-[![Crates.io](https://img.shields.io/crates/v/overture.svg)](https://crates.io/crates/overture)
-[![Documentation](https://docs.rs/overture/badge.svg)](https://docs.rs/overture)
+[![Crates.io](https://img.shields.io/crates/v/stardust-core.svg)](https://crates.io/crates/stardust-core)
+[![Documentation](https://docs.rs/stardust-core/badge.svg)](https://docs.rs/stardust-core)
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![Wiki](https://img.shields.io/badge/docs-wiki-green.svg)](https://github.com/ChaseCondon/Overture/wiki)
 
@@ -17,11 +17,11 @@ Audio I/O, MIDI I/O, VST3 and CLAP plugin hosting, real-time DSP primitives.
 ---
 
 > [!WARNING]
-> **Pre-alpha.** Overture is in early-stage development. Not yet published to crates.io. The API will change.
+> **Pre-alpha.** stardust-core is in early-stage development. Not yet published to crates.io. The API will change.
 
-## What is Overture?
+## What is stardust-core?
 
-Overture is the audio engine that powers [Stardust](https://github.com/ChaseCondon/Stardust), packaged as a general-purpose Rust crate so any audio application can use it.
+stardust-core is the audio engine that powers [Stardust](https://github.com/ChaseCondon/Stardust), packaged as a general-purpose Rust crate so any audio application can use it.
 
 It sits above the lower-level audio and MIDI ecosystem (`cpal`, `midir`) and provides the things live-performance applications typically need on top:
 
@@ -38,7 +38,7 @@ It sits above the lower-level audio and MIDI ecosystem (`cpal`, `midir`) and pro
 
 The audio engine is generally reusable, and there is no reason to lock it inside one application. Splitting it out means anyone can build a live host, a plugin chainer, or any other real-time audio tool without reimplementing the same primitives.
 
-Overture is licensed Apache 2.0 (Stardust itself is GPL v3) so it can be embedded in commercial and proprietary applications without licensing friction.
+stardust-core is licensed Apache 2.0 (Stardust itself is GPL v3) so it can be embedded in commercial and proprietary applications without licensing friction.
 
 ## Quick start
 
@@ -47,12 +47,12 @@ Overture is licensed Apache 2.0 (Stardust itself is GPL v3) so it can be embedde
 
 ```toml
 [dependencies]
-overture = "0.1"
+stardust-core = "0.1"
 ```
 
 ```rust
-use overture::audio::AudioEngine;
-use overture::midi::MidiInput;
+use stardust-core::audio::AudioEngine;
+use stardust-core::midi::MidiInput;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let engine = AudioEngine::default()?;
@@ -69,7 +69,7 @@ See [`examples/`](examples/) for runnable code.
 ## Documentation
 
 - **[Project wiki](https://github.com/ChaseCondon/Overture/wiki)** — architecture, API guides, examples, contributing
-- **[API reference (docs.rs)](https://docs.rs/overture)** — published with the first crates.io release
+- **[API reference (docs.rs)](https://docs.rs/stardust-core)** — published with the first crates.io release
 
 ## Modules
 

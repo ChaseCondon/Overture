@@ -1,4 +1,4 @@
-//! # overture-ipc
+//! # stardust-ipc
 //!
 //! Shared-memory IPC primitives for out-of-process plugin sandboxing.
 //!
@@ -19,4 +19,4 @@
 //! This is the v0.1 scaffold — implementation lands in v0.3 (Plugin
 //! Sandboxing + CLAP).
 
-#![doc(html_root_url = "https://docs.rs/overture-ipc/0.0.1")]
+#![doc(html_root_url = "https://docs.rs/stardust-ipc/0.0.1")]

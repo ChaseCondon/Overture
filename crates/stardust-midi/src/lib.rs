@@ -1,6 +1,6 @@
-//! # overture-midi
+//! # stardust-midi
 //!
-//! MIDI input and output for Overture, with hot-plug detection and
+//! MIDI input and output for stardust-core, with hot-plug detection and
 //! device-profile-aware handling.
 //!
 //! Wraps [`midir`] (CoreMIDI / WinMM / ALSA) behind a higher-level API that:
@@ -12,4 +12,4 @@
 //!
 //! This is the v0.1 scaffold — public modules will land in v0.2.
 
-#![doc(html_root_url = "https://docs.rs/overture-midi/0.0.1")]
+#![doc(html_root_url = "https://docs.rs/stardust-midi/0.0.1")]

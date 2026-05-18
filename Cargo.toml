@@ -1,20 +1,20 @@
 [workspace]
 resolver = "3"
 members = [
-    "crates/overture",
-    "crates/overture-audio",
-    "crates/overture-midi",
-    "crates/overture-plugin",
-    "crates/overture-dsp",
-    "crates/overture-rt",
-    "crates/overture-ipc",
+    "crates/stardust-core",
+    "crates/stardust-audio",
+    "crates/stardust-midi",
+    "crates/stardust-plugin",
+    "crates/stardust-dsp",
+    "crates/stardust-rt",
+    "crates/stardust-ipc",
 ]
 
 [workspace.package]
 version = "0.0.1"
 edition = "2024"
 rust-version = "1.85"
-license = "Apache-2.0"
+license = "MPL-2.0"
 repository = "https://github.com/ChaseCondon/Overture"
 homepage = "https://github.com/ChaseCondon/Overture"
 authors = ["Chase Condon <chase.condon@gmail.com>"]
@@ -49,12 +49,12 @@ anyhow = "1"
 tracing = "0.1"
 
 # Internal crate references
-overture-audio = { path = "crates/overture-audio", version = "0.0.1" }
-overture-midi = { path = "crates/overture-midi", version = "0.0.1" }
-overture-plugin = { path = "crates/overture-plugin", version = "0.0.1" }
-overture-dsp = { path = "crates/overture-dsp", version = "0.0.1" }
-overture-rt = { path = "crates/overture-rt", version = "0.0.1" }
-overture-ipc = { path = "crates/overture-ipc", version = "0.0.1" }
+stardust-audio = { path = "crates/stardust-audio", version = "0.0.1" }
+stardust-midi = { path = "crates/stardust-midi", version = "0.0.1" }
+stardust-plugin = { path = "crates/stardust-plugin", version = "0.0.1" }
+stardust-dsp = { path = "crates/stardust-dsp", version = "0.0.1" }
+stardust-rt = { path = "crates/stardust-rt", version = "0.0.1" }
+stardust-ipc = { path = "crates/stardust-ipc", version = "0.0.1" }
 
 [profile.release]
 lto = "thin"

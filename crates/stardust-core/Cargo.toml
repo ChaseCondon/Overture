@@ -1,0 +1,31 @@
+[package]
+name = "stardust-core"
+description = "Cross-platform Rust audio library for live performance applications. Umbrella crate re-exporting stardust-audio, stardust-midi, stardust-plugin, stardust-dsp, stardust-rt, and stardust-ipc."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+authors.workspace = true
+readme.workspace = true
+categories = ["multimedia::audio", "multimedia"]
+keywords = ["audio", "midi", "vst3", "clap", "live-performance"]
+
+[features]
+default = ["audio", "midi", "rt"]
+audio = ["dep:stardust-audio"]
+midi = ["dep:stardust-midi"]
+plugin = ["dep:stardust-plugin"]
+dsp = ["dep:stardust-dsp"]
+rt = ["dep:stardust-rt"]
+ipc = ["dep:stardust-ipc"]
+full = ["audio", "midi", "plugin", "dsp", "rt", "ipc"]
+
+[dependencies]
+stardust-audio = { workspace = true, optional = true }
+stardust-midi = { workspace = true, optional = true }
+stardust-plugin = { workspace = true, optional = true }
+stardust-dsp = { workspace = true, optional = true }
+stardust-rt = { workspace = true, optional = true }
+stardust-ipc = { workspace = true, optional = true }

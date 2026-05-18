@@ -1,6 +1,6 @@
 [package]
-name = "overture-audio"
-description = "Real-time-safe audio I/O for Overture. Wraps CPAL with a higher-level API for live-performance applications (CoreAudio on macOS, WASAPI on Windows, ASIO on Windows opt-in)."
+name = "stardust-audio"
+description = "Real-time-safe audio I/O for stardust-core. Wraps CPAL with a higher-level API for live-performance applications (CoreAudio on macOS, WASAPI on Windows, ASIO on Windows opt-in)."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -20,4 +20,4 @@ asio = ["cpal/asio"]
 cpal.workspace = true
 thiserror.workspace = true
 tracing.workspace = true
-overture-rt.workspace = true
+stardust-rt.workspace = true

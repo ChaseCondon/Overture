@@ -1,6 +1,6 @@
 [package]
-name = "overture-dsp"
-description = "Built-in audio DSP for Overture: EQ, reverb, compression, gain staging, basic limiter. Pure Rust, allocation-free in the audio thread."
+name = "stardust-dsp"
+description = "Built-in audio DSP for stardust-core: EQ, reverb, compression, gain staging, basic limiter. Pure Rust, allocation-free in the audio thread."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -13,4 +13,4 @@ categories = ["multimedia::audio", "no-std::no-alloc"]
 keywords = ["dsp", "audio", "eq", "reverb", "compressor"]
 
 [dependencies]
-overture-rt.workspace = true
+stardust-rt.workspace = true

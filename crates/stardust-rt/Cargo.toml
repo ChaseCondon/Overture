@@ -1,6 +1,6 @@
 [package]
-name = "overture-rt"
-description = "Real-time-safe primitives for Overture: lock-free queues, voice tracking, pre-allocated buffers. The audio-thread foundation other Overture crates build on."
+name = "stardust-rt"
+description = "Real-time-safe primitives for stardust-core: lock-free queues, voice tracking, pre-allocated buffers. The audio-thread foundation other stardust-core crates build on."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

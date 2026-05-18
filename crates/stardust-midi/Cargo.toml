@@ -1,6 +1,6 @@
 [package]
-name = "overture-midi"
-description = "MIDI I/O for Overture, with hot-plug detection and device-profile-aware input handling. Wraps midir for CoreMIDI / WinMM / ALSA coverage."
+name = "stardust-midi"
+description = "MIDI I/O for stardust-core, with hot-plug detection and device-profile-aware input handling. Wraps midir for CoreMIDI / WinMM / ALSA coverage."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -16,4 +16,4 @@ keywords = ["midi", "midir", "live-performance"]
 midir.workspace = true
 thiserror.workspace = true
 tracing.workspace = true
-overture-rt.workspace = true
+stardust-rt.workspace = true

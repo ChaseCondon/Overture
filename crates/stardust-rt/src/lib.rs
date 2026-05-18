@@ -1,6 +1,6 @@
-//! # overture-rt
+//! # stardust-rt
 //!
-//! Real-time-safe primitives for Overture.
+//! Real-time-safe primitives for stardust-core.
 //!
 //! Everything in here is safe to call from an audio callback: no allocations,
 //! no syscalls, no locks that may block. Anything that doesn't meet that bar
@@ -17,4 +17,4 @@
 //!
 //! This is the v0.1 scaffold — modules land in v0.2.
 
-#![doc(html_root_url = "https://docs.rs/overture-rt/0.0.1")]
+#![doc(html_root_url = "https://docs.rs/stardust-rt/0.0.1")]

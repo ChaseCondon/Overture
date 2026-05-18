@@ -1,6 +1,6 @@
 [package]
-name = "overture-plugin"
-description = "VST3 and CLAP plugin hosting for Overture. VST3 via a C++ shim around the Steinberg SDK, called from Rust via FFI. CLAP via clack-host. Sandboxed (out-of-process) hosting lives in overture-ipc; this crate covers the in-process API surface."
+name = "stardust-plugin"
+description = "VST3 and CLAP plugin hosting for stardust-core. VST3 via a C++ shim around the Steinberg SDK, called from Rust via FFI. CLAP via clack-host. Sandboxed (out-of-process) hosting lives in stardust-ipc; this crate covers the in-process API surface."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -21,7 +21,7 @@ clap = ["dep:clack-host"]
 clack-host = { workspace = true, optional = true }
 thiserror.workspace = true
 tracing.workspace = true
-overture-rt.workspace = true
+stardust-rt.workspace = true
 
 [build-dependencies]
 cc = { version = "1.1", optional = true }
