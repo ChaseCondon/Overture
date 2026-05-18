@@ -13,4 +13,6 @@ categories = ["multimedia::audio", "no-std::no-alloc"]
 keywords = ["dsp", "audio", "eq", "reverb", "compressor"]
 
 [dependencies]
-stardust-rt.workspace = true
+stardust-midi = { path = "../stardust-midi", version = "0.0.1" }
+# stardust-rt isn't a direct dep — the synth itself is queue-agnostic;
+# the integration layer (Phase 1.5) drains the SPSC and feeds events in.

@@ -976,7 +976,7 @@ dependencies = [
 name = "stardust-dsp"
 version = "0.0.1"
 dependencies = [
- "stardust-rt",
+ "stardust-midi",
 ]
 
 [[package]]
