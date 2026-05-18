@@ -20,4 +20,5 @@ asio = ["cpal/asio"]
 cpal.workspace = true
 thiserror.workspace = true
 tracing.workspace = true
-stardust-rt.workspace = true
+# stardust-rt will be added when we feed the audio callback from a lock-free
+# queue (Phase 1.3). For now the lib is a pure cpal wrapper.

@@ -1012,7 +1012,6 @@ name = "stardust-audio"
 version = "0.0.1"
 dependencies = [
  "cpal",
- "stardust-rt",
  "thiserror 2.0.18",
  "tracing",
 ]
