@@ -15,8 +15,8 @@ version = "0.0.1"
 edition = "2024"
 rust-version = "1.85"
 license = "MPL-2.0"
-repository = "https://github.com/ChaseCondon/Overture"
-homepage = "https://github.com/ChaseCondon/Overture"
+repository = "https://github.com/StardustMT/stardust-core"
+homepage = "https://github.com/StardustMT/stardust-core"
 authors = ["Chase Condon <chase.condon@gmail.com>"]
 readme = "README.md"
 

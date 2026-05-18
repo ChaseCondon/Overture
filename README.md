@@ -6,11 +6,11 @@
 
 Audio I/O, MIDI I/O, VST3 and CLAP plugin hosting, real-time DSP primitives.
 
-[![Build status](https://img.shields.io/github/actions/workflow/status/ChaseCondon/Overture/ci.yml?branch=main&label=build)](https://github.com/ChaseCondon/Overture/actions)
+[![Build status](https://img.shields.io/github/actions/workflow/status/StardustMT/stardust-core/ci.yml?branch=main&label=build)](https://github.com/StardustMT/stardust-core/actions)
 [![Crates.io](https://img.shields.io/crates/v/stardust-core.svg)](https://crates.io/crates/stardust-core)
 [![Documentation](https://docs.rs/stardust-core/badge.svg)](https://docs.rs/stardust-core)
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
-[![Wiki](https://img.shields.io/badge/docs-wiki-green.svg)](https://github.com/ChaseCondon/Overture/wiki)
+[![Wiki](https://img.shields.io/badge/docs-wiki-green.svg)](https://github.com/StardustMT/stardust-core/wiki)
 
 </div>
 
@@ -21,7 +21,7 @@ Audio I/O, MIDI I/O, VST3 and CLAP plugin hosting, real-time DSP primitives.
 
 ## What is stardust-core?
 
-stardust-core is the audio engine that powers [Stardust](https://github.com/ChaseCondon/Stardust), packaged as a general-purpose Rust crate so any audio application can use it.
+stardust-core is the audio engine that powers [Stardust](https://github.com/StardustMT/stardust-pit), packaged as a general-purpose Rust crate so any audio application can use it.
 
 It sits above the lower-level audio and MIDI ecosystem (`cpal`, `midir`) and provides the things live-performance applications typically need on top:
 
@@ -68,7 +68,7 @@ See [`examples/`](examples/) for runnable code.
 
 ## Documentation
 
-- **[Project wiki](https://github.com/ChaseCondon/Overture/wiki)** — architecture, API guides, examples, contributing
+- **[Project wiki](https://github.com/StardustMT/stardust-core/wiki)** — architecture, API guides, examples, contributing
 - **[API reference (docs.rs)](https://docs.rs/stardust-core)** — published with the first crates.io release
 
 ## Modules
@@ -88,7 +88,7 @@ See [`examples/`](examples/) for runnable code.
 
 Contributions welcome — especially around plugin-format support, DSP, and platform-specific audio backends.
 
-See [CONTRIBUTING.md](CONTRIBUTING.md). Open an [issue](https://github.com/ChaseCondon/Overture/issues) or [discussion](https://github.com/ChaseCondon/Overture/discussions).
+See [CONTRIBUTING.md](CONTRIBUTING.md). Open an [issue](https://github.com/StardustMT/stardust-core/issues) or [discussion](https://github.com/StardustMT/stardust-core/discussions).
 
 ## License
 
