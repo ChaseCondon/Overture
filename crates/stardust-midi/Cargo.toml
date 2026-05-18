@@ -16,4 +16,5 @@ keywords = ["midi", "midir", "live-performance"]
 midir.workspace = true
 thiserror.workspace = true
 tracing.workspace = true
-stardust-rt.workspace = true
+# stardust-rt will be added once we bridge MIDI -> audio thread via lock-free
+# queues. For now the lib is a pure midir wrapper.

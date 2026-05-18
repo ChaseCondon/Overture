@@ -39,7 +39,7 @@ memmap2 = "0.9"
 bytemuck = { version = "1.16", features = ["derive"] }
 
 # CLAP hosting
-clack-host = "0.4"
+clack-host = "0.1"
 
 # Error handling
 thiserror = "2"
