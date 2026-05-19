@@ -65,7 +65,7 @@ pub struct InstrumentRegion {
 }
 
 /// A loaded instrument — regions + the unique sample bank they reference.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct Instrument {
     /// Regions in original SFZ order.
     pub regions: Vec<InstrumentRegion>,

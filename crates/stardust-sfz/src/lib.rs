@@ -83,7 +83,7 @@ impl DefaultPluginFactory for StardustSfzPlugin {
         // unset or the file can't be read we still instantiate — just
         // with an empty instrument so the plugin loads and the host can
         // surface a "no SFZ loaded" warning rather than a hard failure.
-        let instrument = load_from_env().unwrap_or_else(Instrument::empty);
+        let instrument = load_from_env().unwrap_or_default();
         Ok(SharedState {
             instrument: Arc::new(instrument),
         })
@@ -115,16 +115,6 @@ fn load_from_env() -> Option<Instrument> {
                 path.display()
             );
             None
-        }
-    }
-}
-
-impl Instrument {
-    /// Empty instrument — used as a fallback when no SFZ is configured.
-    pub fn empty() -> Self {
-        Self {
-            regions: Vec::new(),
-            samples: Vec::new(),
         }
     }
 }
@@ -213,14 +203,18 @@ impl<'a> PluginAudioProcessor<'a, SharedState, MainThread<'a>> for Processor<'a>
         scratch.fill(0.0);
 
         // Process events sample-accurately by splitting the render at
-        // event boundaries.
+        // event boundaries. Each batch carries its first sample index;
+        // the next batch's first sample is this batch's end (or the
+        // buffer end for the final batch).
         let mut cursor = 0usize;
         for batch in events.input.batch() {
             for event in batch.events() {
                 self.handle_event(event);
             }
-            let range = batch.sample_bounds();
-            let end = range.end.min(frames);
+            let end = batch
+                .next_batch_first_sample()
+                .unwrap_or(frames)
+                .min(frames);
             if end > cursor {
                 let slice = &mut scratch[cursor * 2..end * 2];
                 self.engine.render_into_stereo(slice);

@@ -53,6 +53,13 @@ pub struct Synth {
 }
 
 impl Synth {
+    /// The ADSR shape every voice is constructed with.
+    pub fn adsr(&self) -> AdsrConfig {
+        self.adsr
+    }
+}
+
+impl Synth {
     /// Create a synth with `polyphony` simultaneous voices at the given
     /// sample rate. Pre-allocates all voice state.
     pub fn new(sample_rate: f32, polyphony: usize) -> Self {
