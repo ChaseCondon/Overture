@@ -16,4 +16,5 @@ stardust-midi = { workspace = true }
 stardust-audio = { workspace = true }
 stardust-rt = { workspace = true }
 stardust-dsp = { workspace = true }
+stardust-plugin = { workspace = true }
 anyhow = { workspace = true }

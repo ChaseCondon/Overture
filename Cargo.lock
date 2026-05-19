@@ -1025,6 +1025,7 @@ dependencies = [
  "stardust-audio",
  "stardust-dsp",
  "stardust-midi",
+ "stardust-plugin",
  "stardust-rt",
 ]
 

@@ -13,7 +13,9 @@ categories = ["multimedia::audio"]
 keywords = ["vst3", "clap", "audio-plugin", "plugin-host"]
 
 [features]
-default = ["vst3", "clap"]
+# CLAP host (clack-host) ships as the only on-by-default backend.
+# VST3 will switch on once the C++ shim lands.
+default = ["clap"]
 vst3 = ["dep:cc"]
 clap = ["dep:clack-host"]
 
