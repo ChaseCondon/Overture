@@ -280,6 +280,29 @@ impl Processor<'_> {
                     self.engine.note_off(channel as u8, key as u8);
                 }
             }
+            // Raw MIDI (1.0) from the host — fixed 3-byte channel
+            // message. We declared CLAP | MIDI dialect on the note
+            // port so CCs (sustain pedal, etc.) and pitch bend flow.
+            Some(CoreEventSpace::Midi(e)) => {
+                let [status, d1, d2] = e.data();
+                let kind = status & 0xF0;
+                let channel = status & 0x0F;
+                match kind {
+                    0xB0 => {
+                        // Control change
+                        self.engine.control_change(channel, d1 & 0x7F, d2 & 0x7F);
+                    }
+                    0xE0 => {
+                        // Pitch bend — 14-bit value with centre 8192.
+                        let lsb = (d1 & 0x7F) as u16;
+                        let msb = (d2 & 0x7F) as u16;
+                        let raw = ((msb << 7) | lsb) as i32;
+                        let centred = (raw - 8192) as i16; // -8192..=8191
+                        self.engine.pitch_bend(channel, centred);
+                    }
+                    _ => {}
+                }
+            }
             _ => {}
         }
     }

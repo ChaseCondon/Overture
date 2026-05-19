@@ -3,86 +3,98 @@
 //! Audio-thread design:
 //!
 //! - Pre-allocated voice pool sized at construction (POLYPHONY).
-//! - Per-voice state is `Copy` — no heap allocation per note.
+//! - Per-voice state is plain data — no heap allocation per note.
 //! - Voice steal strategy: prefer Idle, then Releasing (closest to
 //!   silence), else oldest active.
 //! - Pitch shift via linear interpolation between two consecutive
-//!   source samples — cheap, audibly clean for non-extreme intervals.
-//!   Higher-order interpolation can swap in later without touching the
-//!   note routing.
+//!   source frames — cheap and audibly clean for non-extreme intervals.
+//! - **ADSR via the shared [`stardust_dsp::Envelope`] primitive**, so
+//!   the SFZ engine and the built-in sine synth use the same
+//!   envelope code path.
+//! - Looping (`loop_continuous`) wraps the read position between
+//!   `loop_start` and `loop_end` while the voice is in
+//!   Attack/Decay/Sustain. Releasing voices play through past
+//!   `loop_end` so the tail rings out naturally.
+//! - **Sustain pedal** (CC 64): note-offs are deferred while held; on
+//!   pedal-up every deferred note releases.
+//! - **Pitch bend** is applied as a global pitch offset (default range
+//!   ±2 semitones) to the per-voice playback rate.
 //!
 //! Channel routing: the engine renders interleaved stereo. Mono source
-//! samples get duplicated to both channels. The host is responsible for
-//! providing a stereo output port (the plugin declares stereo only).
+//! samples get duplicated to both channels with optional pan applied.
 
 use crate::instrument::Instrument;
+use crate::sfz::LoopMode;
+use stardust_dsp::{AdsrConfig, EnvState, Envelope};
 use std::sync::Arc;
-
-/// Default per-voice release time in seconds. SFZ files can override
-/// per-region eventually; for the POC every voice uses this.
-const RELEASE_SECONDS: f32 = 0.150;
 
 /// Maximum polyphony. 32 is plenty for a piano-like instrument and
 /// keeps memory predictable.
 pub const POLYPHONY: usize = 32;
 
+/// Pitch-bend range in semitones. SFZ supports per-region bend range
+/// via `bend_up`/`bend_down`; we default to ±2 (general MIDI spec) and
+/// leave per-region overrides as a future enhancement.
+const PITCH_BEND_SEMITONES: f32 = 2.0;
+
 /// One playing note.
-#[derive(Copy, Clone)]
+#[derive(Clone, Copy)]
 struct Voice {
     /// Index into the instrument's `regions`. `usize::MAX` = inactive.
     region_index: usize,
     /// MIDI key — used for matching note-offs.
     key: u8,
-    /// Channel — also matched for note-offs.
+    /// Channel — matched alongside key for note-offs.
     channel: u8,
     /// Fractional read position in the source sample's frames.
-    position: f32,
-    /// Per-source-frame increment driven by pitch ratio.
-    increment: f32,
-    /// Linear amplitude after velocity + volume_db. Held constant per voice.
+    position: f64,
+    /// Base per-source-frame increment (sr_ratio * pitch from key
+    /// vs keycenter + tune/transpose). Pitch bend multiplies this.
+    base_increment: f64,
+    /// Linear amplitude after velocity + volume_db. Held constant.
     gain: f32,
-    /// Envelope: 1.0 while held, linearly ramps to 0 when releasing.
-    env: f32,
-    /// Per-sample env decrement once releasing. 0 while held.
-    env_decrement: f32,
+    /// Pan scalar pair (left_gain, right_gain) — equal-power.
+    pan_lr: (f32, f32),
     /// Monotonic allocation counter for stealing the oldest active voice.
     age: u64,
-    /// One of [`VoiceState`].
-    state: VoiceState,
+    /// Envelope state.
+    env: Envelope,
+    /// True after note-off when the engine is waiting for the sustain
+    /// pedal to lift before actually releasing.
+    sustaining: bool,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq)]
-enum VoiceState {
-    Idle,
-    Playing,
-    Releasing,
-}
-
-impl Default for Voice {
-    fn default() -> Self {
+impl Voice {
+    fn inactive() -> Self {
         Self {
             region_index: usize::MAX,
             key: 0,
             channel: 0,
             position: 0.0,
-            increment: 1.0,
+            base_increment: 1.0,
             gain: 0.0,
-            env: 0.0,
-            env_decrement: 0.0,
+            pan_lr: (1.0, 1.0),
             age: 0,
-            state: VoiceState::Idle,
+            env: Envelope::new(AdsrConfig::default(), 48_000.0),
+            sustaining: false,
         }
+    }
+
+    fn is_active(&self) -> bool {
+        self.region_index != usize::MAX && self.env.is_active()
     }
 }
 
-/// The sample-playback engine. Constructed once per audio session; never
-/// reallocates.
+/// The sample-playback engine.
 pub struct Engine {
     instrument: Arc<Instrument>,
     voices: [Voice; POLYPHONY],
     sample_rate: f32,
     age_counter: u64,
-    release_decrement: f32,
+    /// Current pitch-bend value, normalised to -1.0..=1.0.
+    pitch_bend: f32,
+    /// True while CC 64 (sustain) is held above the on threshold.
+    sustain_pedal: bool,
 }
 
 impl Engine {
@@ -90,16 +102,24 @@ impl Engine {
     pub fn new(instrument: Arc<Instrument>, sample_rate: f32) -> Self {
         Self {
             instrument,
-            voices: [Voice::default(); POLYPHONY],
+            voices: [Voice::inactive(); POLYPHONY],
             sample_rate,
             age_counter: 0,
-            release_decrement: 1.0 / (RELEASE_SECONDS * sample_rate),
+            pitch_bend: 0.0,
+            sustain_pedal: false,
         }
+    }
+
+    /// Replace the loaded instrument and reset all voices. Call from
+    /// the main thread between blocks, not from the audio callback.
+    pub fn replace_instrument(&mut self, instrument: Arc<Instrument>) {
+        self.all_notes_off();
+        self.instrument = instrument;
     }
 
     /// Number of voices currently producing sound.
     pub fn active_voice_count(&self) -> usize {
-        self.voices.iter().filter(|v| v.state != VoiceState::Idle).count()
+        self.voices.iter().filter(|v| v.is_active()).count()
     }
 
     /// True when no voice is producing audio — host can sleep the
@@ -108,110 +128,187 @@ impl Engine {
         self.active_voice_count() == 0
     }
 
-    /// Start a note. Picks the best-matching region; silently drops the
-    /// event if no region claims this (key, velocity) pair.
+    /// Start a note. Picks the best-matching region (last-match-wins
+    /// per SFZ convention); silently drops the event if no region
+    /// claims this (key, velocity) pair.
     pub fn note_on(&mut self, channel: u8, key: u8, velocity: u8) {
         let Some((region_index, region)) = self
             .instrument
             .regions
             .iter()
             .enumerate()
-            .rev() // last-match-wins for overlapping regions, per SFZ convention
-            .find(|(_, r)| r.matches(key, velocity))
+            .rev()
+            .find(|(_, r)| r.region.matches(key, velocity))
         else {
             return;
         };
 
         let sample = &self.instrument.samples[region.sample_index];
-        // Pitch ratio = source_rate / dest_rate * 2^((key - center) / 12).
-        // The first factor compensates for sample-rate mismatch; the
-        // second is the musical pitch shift.
-        let sr_ratio = sample.sample_rate as f32 / self.sample_rate;
-        let pitch = (key as f32 - region.pitch_keycenter as f32) / 12.0;
-        let increment = sr_ratio * 2.0f32.powf(pitch);
+        let sr_ratio = sample.sample_rate as f64 / self.sample_rate as f64;
+        let pitch_semis =
+            (key as f32 - region.region.pitch_keycenter as f32) + region.region.pitch_offset_semitones();
+        let pitch_mult = 2.0f64.powf(pitch_semis as f64 / 12.0);
+        let base_increment = sr_ratio * pitch_mult;
 
-        // Velocity (0-127, linear) → gain. Multiply in volume_db.
         let vel_gain = velocity as f32 / 127.0;
-        let db_gain = 10.0f32.powf(region.volume_db / 20.0);
+        let db_gain = 10.0f32.powf(region.region.volume_db / 20.0);
         let gain = vel_gain * db_gain;
+
+        let pan_lr = pan_to_lr(region.region.pan);
+
+        let env = Envelope::new(
+            AdsrConfig {
+                attack_secs: region.region.ampeg_attack_secs.max(0.0005),
+                decay_secs: region.region.ampeg_decay_secs.max(0.0001),
+                sustain_level: region.region.ampeg_sustain,
+                release_secs: region.region.ampeg_release_secs,
+            },
+            self.sample_rate,
+        );
 
         let idx = self.pick_voice();
         self.age_counter = self.age_counter.wrapping_add(1);
-        self.voices[idx] = Voice {
+        let mut v = Voice {
             region_index,
             key,
             channel,
             position: 0.0,
-            increment,
+            base_increment,
             gain,
-            env: 1.0,
-            env_decrement: 0.0,
+            pan_lr,
             age: self.age_counter,
-            state: VoiceState::Playing,
+            env,
+            sustaining: false,
         };
+        v.env.trigger();
+        self.voices[idx] = v;
     }
 
     /// Release any voice currently playing the given (channel, key).
+    /// If the sustain pedal is held, mark the voices as deferred-release
+    /// instead — they'll release when the pedal lifts.
     pub fn note_off(&mut self, channel: u8, key: u8) {
         for v in &mut self.voices {
-            if v.state == VoiceState::Playing && v.key == key && v.channel == channel {
-                v.state = VoiceState::Releasing;
-                v.env_decrement = self.release_decrement;
+            if !v.is_active() || v.key != key || v.channel != channel {
+                continue;
+            }
+            if self.sustain_pedal {
+                v.sustaining = true;
+            } else {
+                v.env.release();
             }
         }
     }
 
-    /// Force every voice silent immediately — host calls this on panic,
-    /// patch change, or stop_processing.
-    pub fn all_notes_off(&mut self) {
-        for v in &mut self.voices {
-            v.state = VoiceState::Idle;
-            v.region_index = usize::MAX;
+    /// MIDI CC. We honour:
+    /// - **CC 64 (sustain pedal)**: >=64 = on, <64 = off; releasing
+    ///   sweeps any sustained voices.
+    /// - **CC 123 (all notes off)**: triggers `all_notes_off`.
+    pub fn control_change(&mut self, _channel: u8, cc: u8, value: u8) {
+        match cc {
+            64 => {
+                let down = value >= 64;
+                let was_down = self.sustain_pedal;
+                self.sustain_pedal = down;
+                if was_down && !down {
+                    // Pedal lifted — release any held voices.
+                    for v in &mut self.voices {
+                        if v.sustaining {
+                            v.env.release();
+                            v.sustaining = false;
+                        }
+                    }
+                }
+            }
+            123 => self.all_notes_off(),
+            _ => {}
         }
     }
 
-    /// Render `frames` interleaved stereo samples into `out` (length
-    /// must be `frames * 2`). Caller is expected to zero the buffer
-    /// first; we ADD into it so multiple engines could share an output.
+    /// MIDI pitch bend. `value` is the raw 14-bit centred bend value:
+    /// 0 = full down, 8192 = no bend, 16383 = full up. Stored as a
+    /// normalised -1.0..=1.0 multiplier applied to voice increments.
+    pub fn pitch_bend(&mut self, _channel: u8, value: i16) {
+        // CLAP delivers pitch bend as a normalised f64; the integration
+        // layer converts. For MIDI-derived ints, treat as 14-bit centred
+        // around 8192 (the host passes value = raw - 8192 already).
+        let normalised = (value as f32 / 8192.0).clamp(-1.0, 1.0);
+        self.pitch_bend = normalised;
+    }
+
+    /// Same as `pitch_bend` but takes a pre-normalised value.
+    pub fn pitch_bend_normalised(&mut self, _channel: u8, value: f32) {
+        self.pitch_bend = value.clamp(-1.0, 1.0);
+    }
+
+    /// Force every voice silent immediately — host calls this on
+    /// panic, patch change, or stop_processing.
+    pub fn all_notes_off(&mut self) {
+        for v in &mut self.voices {
+            v.env.reset();
+            v.region_index = usize::MAX;
+            v.sustaining = false;
+        }
+        self.sustain_pedal = false;
+    }
+
+    /// Render `out` (interleaved stereo, length must be `frames * 2`).
+    /// ADDS into the buffer — caller zeroes first if mixing multiple
+    /// engines into the same output.
     pub fn render_into_stereo(&mut self, out: &mut [f32]) {
+        let bend_mult = 2.0f64.powf((self.pitch_bend * PITCH_BEND_SEMITONES) as f64 / 12.0);
         let frames = out.len() / 2;
         for f in 0..frames {
             let mut left = 0.0f32;
             let mut right = 0.0f32;
             for v in &mut self.voices {
-                if v.state == VoiceState::Idle {
+                if v.region_index == usize::MAX {
                     continue;
                 }
-                if v.region_index == usize::MAX {
-                    v.state = VoiceState::Idle;
+                if !v.env.is_active() {
+                    v.region_index = usize::MAX;
                     continue;
                 }
                 let region = &self.instrument.regions[v.region_index];
                 let sample = &self.instrument.samples[region.sample_index];
 
+                // Read with linear interpolation.
                 let total_frames = sample.frames();
-                if v.position as usize + 1 >= total_frames {
-                    // Sample ran out — silence and free the voice.
-                    v.state = VoiceState::Idle;
-                    continue;
+                let pos_floor = v.position.floor() as usize;
+                let pos_next = pos_floor + 1;
+                if pos_next >= total_frames {
+                    // Past sample end. Loop or stop.
+                    if region.region.loop_mode == LoopMode::LoopContinuous
+                        && v.env.state() != EnvState::Released
+                    {
+                        let (lstart, lend) = loop_bounds(region, total_frames);
+                        v.position = lstart + (v.position - lend as f64).max(0.0);
+                    } else {
+                        v.region_index = usize::MAX;
+                        v.env.reset();
+                        continue;
+                    }
                 }
-
-                let idx = v.position as usize;
-                let frac = v.position - idx as f32;
-                let (l0, r0) = sample.frame(idx);
-                let (l1, r1) = sample.frame(idx + 1);
+                let pos_floor = v.position.floor() as usize;
+                let frac = (v.position - pos_floor as f64) as f32;
+                let (l0, r0) = sample.frame(pos_floor);
+                let (l1, r1) = sample.frame(pos_floor + 1);
                 let l = l0 + (l1 - l0) * frac;
                 let r = r0 + (r1 - r0) * frac;
-                let amp = v.gain * v.env;
-                left += l * amp;
-                right += r * amp;
+                let env = v.env.tick();
+                let amp = v.gain * env;
+                left += l * amp * v.pan_lr.0;
+                right += r * amp * v.pan_lr.1;
 
-                v.position += v.increment;
+                v.position += v.base_increment * bend_mult;
 
-                if v.state == VoiceState::Releasing {
-                    v.env -= v.env_decrement;
-                    if v.env <= 0.0 {
-                        v.state = VoiceState::Idle;
+                // Loop wrap during sustained playback.
+                if region.region.loop_mode == LoopMode::LoopContinuous
+                    && v.env.state() != EnvState::Released
+                {
+                    let (lstart, lend) = loop_bounds(region, total_frames);
+                    if v.position >= lend as f64 {
+                        v.position = lstart + (v.position - lend as f64);
                     }
                 }
             }
@@ -225,18 +322,15 @@ impl Engine {
             .voices
             .iter()
             .enumerate()
-            .find(|(_, v)| v.state == VoiceState::Idle)
+            .find(|(_, v)| !v.is_active())
         {
             return i;
         }
-        // Steal the releasing voice with the lowest envelope (closest
-        // to silence), else the oldest playing voice.
         if let Some((i, _)) = self
             .voices
             .iter()
             .enumerate()
-            .filter(|(_, v)| v.state == VoiceState::Releasing)
-            .min_by(|a, b| a.1.env.partial_cmp(&b.1.env).unwrap())
+            .find(|(_, v)| v.env.state() == EnvState::Released)
         {
             return i;
         }
@@ -249,6 +343,28 @@ impl Engine {
     }
 }
 
+/// Resolve loop start/end for a region, defaulting `loop_end == 0` to
+/// the end of the sample.
+fn loop_bounds(
+    region: &crate::instrument::InstrumentRegion,
+    total_frames: usize,
+) -> (f64, u64) {
+    let start = region.region.loop_start as f64;
+    let end = if region.region.loop_end == 0 {
+        total_frames as u64
+    } else {
+        region.region.loop_end.min(total_frames as u64)
+    };
+    (start.min(end.saturating_sub(1) as f64), end.max(1))
+}
+
+/// SFZ pan: -100 = full L, +100 = full R, 0 = centred. Equal-power.
+fn pan_to_lr(pan: f32) -> (f32, f32) {
+    let p = (pan / 100.0).clamp(-1.0, 1.0);
+    let angle = (p + 1.0) * std::f32::consts::FRAC_PI_4; // 0..π/2
+    (angle.cos(), angle.sin())
+}
+
 // =============================================================================
 // Tests
 // =============================================================================
@@ -256,13 +372,12 @@ impl Engine {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::instrument::{InstrumentRegion, build_instrument};
+    use crate::instrument::InstrumentRegion;
     use crate::sample::Sample;
     use crate::sfz::Region;
     use std::path::PathBuf;
 
     fn ramp_sample(rate: u32, frames: usize) -> Sample {
-        // 0.0 → 1.0 linear ramp, mono — predictable for assertions.
         let data: Vec<f32> = (0..frames).map(|i| i as f32 / frames as f32).collect();
         Sample {
             data,
@@ -272,18 +387,14 @@ mod tests {
     }
 
     fn instrument_with_one_region() -> Arc<Instrument> {
-        // Build an instrument directly, bypassing the SFZ parser/loader,
-        // so we can assert on engine behaviour in isolation.
-        let sample = ramp_sample(48_000, 4_800); // 100ms of ramp
+        let sample = ramp_sample(48_000, 4_800);
         let region = InstrumentRegion {
             region: Region {
                 sample: PathBuf::from("ramp"),
                 lokey: 60,
                 hikey: 60,
                 pitch_keycenter: 60,
-                lovel: 0,
-                hivel: 127,
-                volume_db: 0.0,
+                ..Region::default()
             },
             sample_index: 0,
         };
@@ -300,62 +411,90 @@ mod tests {
         e.note_on(0, 60, 100);
         assert_eq!(e.active_voice_count(), 1);
         e.note_off(0, 60);
-        // Voice is now Releasing — still active.
-        assert_eq!(e.active_voice_count(), 1);
-        // Render past release.
+        // Render past the release tail.
         let mut buf = vec![0.0f32; 48_000];
         e.render_into_stereo(&mut buf);
         assert_eq!(e.active_voice_count(), 0);
     }
 
     #[test]
-    fn render_produces_non_silent_output_for_held_note() {
+    fn sustain_pedal_defers_note_off() {
         let mut e = Engine::new(instrument_with_one_region(), 48_000.0);
-        e.note_on(0, 60, 127);
-        let mut buf = vec![0.0f32; 2_000 * 2];
+        e.note_on(0, 60, 100);
+        e.control_change(0, 64, 127); // pedal down
+        e.note_off(0, 60);
+        // With pedal held the voice should still be active.
+        let mut tiny = vec![0.0f32; 200 * 2];
+        e.render_into_stereo(&mut tiny);
+        assert_eq!(e.active_voice_count(), 1);
+        // Release the pedal — voice should now release and die out.
+        e.control_change(0, 64, 0);
+        let mut buf = vec![0.0f32; 48_000 * 2];
         e.render_into_stereo(&mut buf);
-        let peak = buf.iter().map(|s| s.abs()).fold(0.0f32, f32::max);
-        assert!(peak > 0.05, "expected audible output, got peak {peak}");
+        assert_eq!(e.active_voice_count(), 0);
+    }
+
+    #[test]
+    fn all_notes_off_via_cc_123() {
+        let mut e = Engine::new(instrument_with_one_region(), 48_000.0);
+        e.note_on(0, 60, 100);
+        e.control_change(0, 123, 0);
+        assert_eq!(e.active_voice_count(), 0);
+    }
+
+    #[test]
+    fn pitch_bend_changes_playback_rate() {
+        let inst = instrument_with_one_region();
+        let mut a = Engine::new(inst.clone(), 48_000.0);
+        let mut b = Engine::new(inst.clone(), 48_000.0);
+        a.note_on(0, 60, 127);
+        b.note_on(0, 60, 127);
+        b.pitch_bend_normalised(0, 1.0); // +2 semitones at default range
+        let mut buf_a = vec![0.0f32; 200 * 2];
+        let mut buf_b = vec![0.0f32; 200 * 2];
+        a.render_into_stereo(&mut buf_a);
+        b.render_into_stereo(&mut buf_b);
+        let a_last = buf_a[buf_a.len() - 2];
+        let b_last = buf_b[buf_b.len() - 2];
+        assert!(
+            b_last > a_last * 1.1,
+            "pitch-bent voice should have advanced further: a={a_last} b={b_last}"
+        );
     }
 
     #[test]
     fn note_outside_region_range_is_silent() {
         let mut e = Engine::new(instrument_with_one_region(), 48_000.0);
-        e.note_on(0, 72, 100); // outside [60, 60]
+        e.note_on(0, 72, 100);
         assert_eq!(e.active_voice_count(), 0);
     }
 
     #[test]
-    fn all_notes_off_silences_everything() {
-        let mut e = Engine::new(instrument_with_one_region(), 48_000.0);
+    fn loop_continuous_keeps_voice_alive_past_sample_end() {
+        let mut inst = (*instrument_with_one_region()).clone();
+        inst.regions[0].region.loop_mode = LoopMode::LoopContinuous;
+        inst.regions[0].region.loop_start = 0;
+        inst.regions[0].region.loop_end = 0; // means "use sample length"
+        let mut e = Engine::new(Arc::new(inst), 48_000.0);
         e.note_on(0, 60, 100);
-        e.all_notes_off();
-        assert_eq!(e.active_voice_count(), 0);
+        // Sample is 4800 frames; render 20_000 frames worth — without
+        // looping the voice would die long before then.
+        let mut buf = vec![0.0f32; 20_000 * 2];
+        e.render_into_stereo(&mut buf);
+        assert!(e.active_voice_count() > 0);
     }
 
     #[test]
-    fn note_higher_than_keycenter_pitches_up() {
-        // Building two engines is easier than poking voice internals.
-        let inst = instrument_with_one_region();
-        let mut a = Engine::new(inst.clone(), 48_000.0);
-        let mut b = Engine::new(inst.clone(), 48_000.0);
-        a.note_on(0, 60, 127); // at keycenter
-        b.note_on(0, 72, 127); // one octave up = 2x rate
-        // After N output samples, b should have advanced ~2x as far
-        // through the source. Render both and check the first sample
-        // (both start at position 0 so first sample identical; render
-        // for a bit and compare position via second-window energy).
-        let mut buf_a = vec![0.0f32; 200 * 2];
-        let mut buf_b = vec![0.0f32; 200 * 2];
-        a.render_into_stereo(&mut buf_a);
-        b.render_into_stereo(&mut buf_b);
-        // The ramp goes 0 → 1; the higher-pitched note advances through
-        // the ramp faster, so its last sample should be larger than a's.
-        let a_last = buf_a[buf_a.len() - 2];
-        let b_last = buf_b[buf_b.len() - 2];
-        assert!(
-            b_last > a_last * 1.5,
-            "expected pitched-up render to be further along: a={a_last} b={b_last}"
-        );
+    fn pan_full_left_silences_right() {
+        let mut inst = (*instrument_with_one_region()).clone();
+        inst.regions[0].region.pan = -100.0;
+        let mut e = Engine::new(Arc::new(inst), 48_000.0);
+        e.note_on(0, 60, 127);
+        let mut buf = vec![0.0f32; 500 * 2];
+        e.render_into_stereo(&mut buf);
+        let max_left = buf.iter().step_by(2).map(|s| s.abs()).fold(0.0f32, f32::max);
+        let max_right = buf.iter().skip(1).step_by(2).map(|s| s.abs()).fold(0.0f32, f32::max);
+        assert!(max_left > 0.05, "left channel should be audible");
+        assert!(max_right < max_left * 0.05, "right should be near-silent (got {max_right})");
     }
 }

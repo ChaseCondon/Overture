@@ -24,6 +24,9 @@ clack-extensions = { workspace = true, features = ["audio-ports", "clack-plugin"
 hound = { workspace = true }
 thiserror = { workspace = true }
 tracing = { workspace = true }
+# Shared envelope primitive lives in stardust-dsp so the sine synth and
+# the SFZ engine both use the same code path.
+stardust-dsp = { workspace = true }
 
 [dev-dependencies]
 anyhow = { workspace = true }

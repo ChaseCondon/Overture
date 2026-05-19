@@ -8,20 +8,38 @@ limiter) will follow the same shape and live in sibling
 
 ## Status
 
-POC — v0 of a real instrument. Supports enough SFZ to load and play
-basic real-world instruments (one-shot sample regions, multi-key
-mapping, velocity layers); intentionally skips envelopes, filters,
-LFOs, round-robin, looping, and groups for now.
+v0.1 — workable for real instruments, still POC-class. Supports
+enough SFZ to load and play velocity-layered pianos, looped pads,
+sustained organs, drum kits, and most basic preset libraries with
+correct envelopes and sustain-pedal behaviour. Intentionally skips
+filters, LFOs, round-robin, release samples, and CC modulation; those
+land in later phases.
 
-Supported opcodes inside `<region>`:
+Supported sections + opcode inheritance: `<global>` → `<master>` →
+`<group>` → `<region>` — opcodes set at any level cascade into every
+narrower scope, regions can override anything inherited. `<control>`
+honours `default_path`.
 
-- `sample=<relative path>` — relative to the `.sfz` file's directory.
-  Forward and backslash separators both work.
-- `pitch_keycenter=<0..127>` — note the sample was recorded at.
-- `lokey` / `hikey` — MIDI note range (inclusive).
-- `key=N` — shorthand for `lokey=N hikey=N pitch_keycenter=N`.
-- `lovel` / `hivel` — velocity range (inclusive).
-- `volume=<db>` — region gain in decibels.
+Supported opcodes (anywhere in the inheritance chain):
+
+- **mapping**: `sample`, `key`, `lokey`, `hikey`, `pitch_keycenter`,
+  `lovel`, `hivel`
+- **amplitude**: `volume` (dB), `pan` (-100..100, equal-power)
+- **pitch**: `tune` (cents), `transpose` (semitones)
+- **envelope**: `ampeg_attack`, `ampeg_decay`, `ampeg_sustain`
+  (percent), `ampeg_release` (all seconds)
+- **loop**: `loop_mode` (`no_loop` / `one_shot` / `loop_continuous`),
+  `loop_start`, `loop_end` (frame indices)
+
+Note values accept either MIDI numbers (`60`) or note names (`c4`,
+`c#3`, `eb-1`).
+
+MIDI handling:
+
+- **CC 64** sustain pedal — note-offs deferred while held; pedal-up
+  releases everything that was waiting.
+- **CC 123** all notes off.
+- **Pitch bend** ±2 semitones (general MIDI default).
 
 Unknown opcodes are silently dropped, so partial-support instruments
 still load and play (without the unimplemented bits).
@@ -102,13 +120,26 @@ without standing up a host.
   audio out + CLAP/MIDI note in, routes note events to the engine,
   renders into the host's output buffer.
 
+## RAM safety
+
+Samples decode to f32 in RAM at load time. Two caps prevent runaway
+libraries from OOM-ing the host (configurable via `LoadLimits`):
+
+- **per-sample**: 64 MiB default
+- **per-instrument**: 512 MiB total default
+
+Both are soft — oversized samples are skipped with a clear error
+into `LoadReport::errors`, and the rest of the instrument loads.
+Streaming-from-disk via `stardust_rt::RingBuffer` is a future phase
+for true multi-GB libraries.
+
 ## Future work
 
 - CLAP state extension (persist loaded SFZ in patch files)
 - Plugin GUI with file picker
-- Envelopes (ampeg_attack, ampeg_release, etc.)
 - Round-robin (`seq_position`, `seq_length`)
-- Looping (`loop_mode`, `loop_start`, `loop_end`)
-- Note names in opcode values (`c4` rather than `60`)
-- Groups + globals with opcode inheritance
+- Release samples (`trigger=release`)
+- Filters + LFOs (`fil_type`, `cutoff`, `lfoN_*`)
+- CC modulation matrix (`amplitude_oncc7`, `cutoff_oncc1`, …)
+- Per-region `bend_up` / `bend_down` overrides
 - Streaming sample playback for libraries that don't fit in RAM

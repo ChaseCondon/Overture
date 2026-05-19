@@ -22,18 +22,15 @@
 #![doc(html_root_url = "https://docs.rs/stardust-dsp/0.0.1")]
 #![warn(missing_docs)]
 
+pub mod envelope;
+
+pub use envelope::{AdsrConfig, EnvState, Envelope};
+
 use std::f32::consts::TAU;
 use stardust_midi::MidiMessage;
 
 /// Master output gain. -12 dB leaves headroom when many voices stack.
 const MASTER_GAIN: f32 = 0.25;
-
-/// Default ADSR shape — short attack, modest decay, mid sustain, longer
-/// release. Tunable per-patch eventually; constant for POC.
-const ATTACK_S: f32 = 0.005;
-const DECAY_S: f32 = 0.050;
-const SUSTAIN_LEVEL: f32 = 0.7;
-const RELEASE_S: f32 = 0.200;
 
 /// Convert a MIDI note number to frequency in Hz (A4 = 440 Hz = note 69).
 #[inline]
@@ -49,29 +46,31 @@ fn note_hz(note: u8) -> f32 {
 /// silence loses its slot.
 pub struct Synth {
     sample_rate: f32,
+    adsr: AdsrConfig,
     voices: Vec<Voice>,
     /// Monotonic counter to time-order voice allocations for stealing.
     age_counter: u64,
-    /// Per-sample envelope rates, recomputed at construction.
-    attack_per_sample: f32,
-    decay_per_sample: f32,
-    release_per_sample: f32,
 }
 
 impl Synth {
     /// Create a synth with `polyphony` simultaneous voices at the given
     /// sample rate. Pre-allocates all voice state.
     pub fn new(sample_rate: f32, polyphony: usize) -> Self {
+        Self::with_adsr(sample_rate, polyphony, AdsrConfig::default())
+    }
+
+    /// Create a synth with a custom ADSR shape.
+    pub fn with_adsr(sample_rate: f32, polyphony: usize, adsr: AdsrConfig) -> Self {
         debug_assert!(sample_rate > 0.0);
         debug_assert!(polyphony > 0);
-        let voices = (0..polyphony).map(|_| Voice::default()).collect();
+        let voices = (0..polyphony)
+            .map(|_| Voice::new(sample_rate, adsr))
+            .collect();
         Self {
             sample_rate,
+            adsr,
             voices,
             age_counter: 0,
-            attack_per_sample: 1.0 / (sample_rate * ATTACK_S),
-            decay_per_sample: (1.0 - SUSTAIN_LEVEL) / (sample_rate * DECAY_S),
-            release_per_sample: SUSTAIN_LEVEL / (sample_rate * RELEASE_S),
         }
     }
 
@@ -97,8 +96,8 @@ impl Synth {
     /// Release any voice currently playing this note. No-op if none.
     pub fn note_off(&mut self, note: u8) {
         for v in &mut self.voices {
-            if v.note == Some(note) && v.state != EnvState::Released {
-                v.release();
+            if v.note == Some(note) && v.env.state() != EnvState::Released {
+                v.env.release();
             }
         }
     }
@@ -117,12 +116,7 @@ impl Synth {
         for frame in buf.chunks_exact_mut(channels) {
             let mut mix = 0.0f32;
             for v in &mut self.voices {
-                mix += v.tick(
-                    self.sample_rate,
-                    self.attack_per_sample,
-                    self.decay_per_sample,
-                    self.release_per_sample,
-                );
+                mix += v.tick();
             }
             let sample = mix * MASTER_GAIN;
             for ch in frame.iter_mut() {
@@ -133,7 +127,7 @@ impl Synth {
 
     /// Returns the number of voices currently producing sound.
     pub fn active_voice_count(&self) -> usize {
-        self.voices.iter().filter(|v| v.state != EnvState::Idle).count()
+        self.voices.iter().filter(|v| v.env.is_active()).count()
     }
 
     fn pick_voice_for_steal(&self) -> usize {
@@ -142,17 +136,19 @@ impl Synth {
             .voices
             .iter()
             .enumerate()
-            .find(|(_, v)| v.state == EnvState::Idle)
+            .find(|(_, v)| !v.env.is_active())
         {
             return i;
         }
         // 2) Released voice with lowest envelope (closest to silence).
+        // The Envelope doesn't expose its internal level — for steal
+        // priority we just pick any Released voice; precision here
+        // doesn't matter musically.
         if let Some((i, _)) = self
             .voices
             .iter()
             .enumerate()
-            .filter(|(_, v)| v.state == EnvState::Released)
-            .min_by(|a, b| a.1.env_level.partial_cmp(&b.1.env_level).unwrap())
+            .find(|(_, v)| v.env.state() == EnvState::Released)
         {
             return i;
         }
@@ -166,15 +162,6 @@ impl Synth {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum EnvState {
-    Idle,
-    Attack,
-    Decay,
-    Sustain,
-    Released,
-}
-
 #[derive(Clone)]
 struct Voice {
     note: Option<u8>,
@@ -184,41 +171,28 @@ struct Voice {
     /// Phase increment per sample for the current note.
     phase_inc: f32,
     velocity: f32, // 0.0..=1.0
-    state: EnvState,
-    env_level: f32,
+    env: Envelope,
 }
 
-impl Default for Voice {
-    fn default() -> Self {
+impl Voice {
+    fn new(sample_rate: f32, adsr: AdsrConfig) -> Self {
         Self {
             note: None,
             age: 0,
             phase: 0.0,
             phase_inc: 0.0,
             velocity: 0.0,
-            state: EnvState::Idle,
-            env_level: 0.0,
+            env: Envelope::new(adsr, sample_rate),
         }
     }
-}
 
-impl Voice {
     fn start(&mut self, note: u8, velocity: u8, age: u64, sample_rate: f32) {
         self.note = Some(note);
         self.age = age;
         self.phase = 0.0;
         self.phase_inc = note_hz(note) * TAU / sample_rate;
         self.velocity = (velocity as f32 / 127.0).clamp(0.0, 1.0);
-        self.state = EnvState::Attack;
-        // Don't reset env_level — re-triggering an already-playing voice
-        // starts the new attack from wherever the envelope was, which
-        // avoids clicks.
-    }
-
-    fn release(&mut self) {
-        if self.state != EnvState::Idle && self.state != EnvState::Released {
-            self.state = EnvState::Released;
-        }
+        self.env.trigger();
     }
 
     fn reset(&mut self) {
@@ -226,49 +200,16 @@ impl Voice {
         self.phase = 0.0;
         self.phase_inc = 0.0;
         self.velocity = 0.0;
-        self.state = EnvState::Idle;
-        self.env_level = 0.0;
+        self.env.reset();
     }
 
     #[inline]
-    fn tick(
-        &mut self,
-        _sample_rate: f32,
-        attack_inc: f32,
-        decay_inc: f32,
-        release_inc: f32,
-    ) -> f32 {
-        // Advance envelope.
-        match self.state {
-            EnvState::Idle => return 0.0,
-            EnvState::Attack => {
-                self.env_level += attack_inc;
-                if self.env_level >= 1.0 {
-                    self.env_level = 1.0;
-                    self.state = EnvState::Decay;
-                }
-            }
-            EnvState::Decay => {
-                self.env_level -= decay_inc;
-                if self.env_level <= SUSTAIN_LEVEL {
-                    self.env_level = SUSTAIN_LEVEL;
-                    self.state = EnvState::Sustain;
-                }
-            }
-            EnvState::Sustain => {
-                // Hold.
-            }
-            EnvState::Released => {
-                self.env_level -= release_inc;
-                if self.env_level <= 0.0 {
-                    self.reset();
-                    return 0.0;
-                }
-            }
+    fn tick(&mut self) -> f32 {
+        let env = self.env.tick();
+        if env == 0.0 {
+            return 0.0;
         }
-
-        // Oscillator.
-        let sample = self.phase.sin() * self.env_level * self.velocity;
+        let sample = self.phase.sin() * env * self.velocity;
         self.phase += self.phase_inc;
         if self.phase >= TAU {
             self.phase -= TAU;
@@ -306,10 +247,10 @@ mod tests {
         // Render briefly so attack ramps up.
         let mut buf = vec![0.0f32; 256 * 2];
         s.render(&mut buf, 2);
-        assert!(s.voices.iter().any(|v| v.state != EnvState::Idle));
+        assert!(s.voices.iter().any(|v| v.env.is_active()));
 
         s.note_off(60);
-        assert!(s.voices.iter().any(|v| v.state == EnvState::Released));
+        assert!(s.voices.iter().any(|v| v.env.state() == EnvState::Released));
     }
 
     #[test]
@@ -371,7 +312,7 @@ mod tests {
         s.process_midi(MidiMessage::NoteOn { channel: 0, note: 60, velocity: 100 });
         assert_eq!(s.active_voice_count(), 1);
         s.process_midi(MidiMessage::NoteOff { channel: 0, note: 60, velocity: 0 });
-        assert!(s.voices.iter().any(|v| v.state == EnvState::Released));
+        assert!(s.voices.iter().any(|v| v.env.state() == EnvState::Released));
     }
 
     #[test]

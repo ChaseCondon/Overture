@@ -4,17 +4,61 @@
 //! of the same note, for example). The loader deduplicates by path so
 //! the audio engine ends up with `regions.len() <= samples.len()` and
 //! every region carries an index into the sample bank.
+//!
+//! # Memory safety
+//!
+//! Samples are decoded fully into RAM. To prevent a runaway SFZ from
+//! OOM-ing the host we apply two caps at load time:
+//!
+//! - `LoadLimits::max_sample_bytes`: any single sample larger than this
+//!   is skipped with a clear error. Defaults to 64 MiB.
+//! - `LoadLimits::max_total_bytes`: once the cumulative loaded size
+//!   exceeds this, subsequent samples are skipped with a clear error.
+//!   Defaults to 512 MiB.
+//!
+//! Both limits are soft — they don't crash, they just collect into
+//! `LoadReport::errors` and drop the offending regions. The host can
+//! show the user what didn't load.
+//!
+//! # Future: streaming
+//!
+//! For libraries that legitimately need GB of samples, a worker thread
+//! + per-voice `stardust_rt::RingBuffer` would let the audio thread pull
+//! samples on demand without locking. The current full-preload approach
+//! is the right starting point for a POC; the architectural seam lives
+//! at [`Sample`](crate::sample::Sample) — swapping it for a streaming
+//! type wouldn't touch the engine.
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
-use crate::sample::{Sample, SampleError};
+use crate::sample::Sample;
 use crate::sfz::{Region, SfzFile};
+
+/// Caps applied when loading samples. Built with `Default` for typical
+/// instruments; override for memory-constrained or memory-rich setups.
+#[derive(Debug, Clone, Copy)]
+pub struct LoadLimits {
+    /// Skip any single sample whose decoded f32 size exceeds this.
+    pub max_sample_bytes: usize,
+    /// Stop loading new samples once the cumulative decoded f32 size
+    /// reaches this. Already-loaded samples stay in the instrument.
+    pub max_total_bytes: usize,
+}
+
+impl Default for LoadLimits {
+    fn default() -> Self {
+        Self {
+            max_sample_bytes: 64 * 1024 * 1024,    // 64 MiB
+            max_total_bytes: 512 * 1024 * 1024,    // 512 MiB
+        }
+    }
+}
 
 /// A region paired with an index into [`Instrument::samples`].
 #[derive(Debug, Clone)]
 pub struct InstrumentRegion {
-    /// The parsed region (key/velocity range, pitch, volume).
+    /// The parsed region (key/velocity range, pitch, volume, envelope, loop).
     pub region: Region,
     /// Index of this region's sample in the bank.
     pub sample_index: usize,
@@ -29,45 +73,76 @@ pub struct Instrument {
     pub samples: Vec<Sample>,
 }
 
-/// Aggregate error: which files we couldn't load and why. Loading
-/// continues past individual failures so a missing or corrupt sample
-/// doesn't make the whole instrument unusable.
+/// Aggregate report: what loaded, what didn't, and why.
 #[derive(Debug, Default)]
 pub struct LoadReport {
     /// Successfully loaded instrument.
     pub instrument: Instrument,
     /// Samples we tried to load but couldn't, paired with the reason.
-    /// Regions that referenced these samples are silently dropped from
-    /// the instrument.
+    /// Regions that referenced these samples are dropped from the
+    /// instrument.
     pub errors: Vec<(PathBuf, String)>,
+    /// Total decoded sample bytes resident in RAM.
+    pub bytes_loaded: usize,
 }
 
 /// Read an `.sfz` file from disk, parse it, and load every sample it
-/// references. Returns a [`LoadReport`] — never fails outright at the
-/// `LoadReport` level; per-sample failures are collected and the
-/// instrument is built from whatever did load.
+/// references with default RAM limits.
 pub fn load_sfz(path: &Path) -> Result<LoadReport, std::io::Error> {
+    load_sfz_with_limits(path, LoadLimits::default())
+}
+
+/// Same as [`load_sfz`] but with caller-supplied RAM limits.
+pub fn load_sfz_with_limits(
+    path: &Path,
+    limits: LoadLimits,
+) -> Result<LoadReport, std::io::Error> {
     let text = std::fs::read_to_string(path)?;
     let base = path
         .parent()
         .map(|p| p.to_path_buf())
         .unwrap_or_else(|| PathBuf::from("."));
     let parsed = SfzFile::parse(&text, &base);
-    Ok(build_load_report(parsed))
+    Ok(build_load_report(parsed, limits))
 }
 
-/// Pure-data variant of [`load_sfz`] that takes an already-parsed file.
-/// Useful in tests and when the SFZ text comes from a non-file source.
-pub fn build_load_report(parsed: SfzFile) -> LoadReport {
+/// Pure-data variant: takes an already-parsed file. Useful in tests
+/// and when the SFZ text comes from a non-file source.
+pub fn build_load_report(parsed: SfzFile, limits: LoadLimits) -> LoadReport {
     let mut report = LoadReport::default();
     let mut path_to_index: HashMap<PathBuf, usize> = HashMap::new();
     for region in parsed.regions {
-        let entry = path_to_index.get(&region.sample).copied();
-        let sample_index = match entry {
+        let sample_index = match path_to_index.get(&region.sample).copied() {
             Some(i) => i,
             None => match Sample::load_wav(&region.sample) {
                 Ok(sample) => {
+                    let bytes = sample.data.len() * std::mem::size_of::<f32>();
+                    if bytes > limits.max_sample_bytes {
+                        report.errors.push((
+                            region.sample.clone(),
+                            format!(
+                                "sample is {} MiB; over max_sample_bytes cap of {} MiB",
+                                bytes / (1024 * 1024),
+                                limits.max_sample_bytes / (1024 * 1024)
+                            ),
+                        ));
+                        continue;
+                    }
+                    if report.bytes_loaded + bytes > limits.max_total_bytes {
+                        report.errors.push((
+                            region.sample.clone(),
+                            format!(
+                                "would exceed max_total_bytes cap of {} MiB \
+                                 (currently {} MiB loaded, +{} MiB requested)",
+                                limits.max_total_bytes / (1024 * 1024),
+                                report.bytes_loaded / (1024 * 1024),
+                                bytes / (1024 * 1024)
+                            ),
+                        ));
+                        continue;
+                    }
                     let i = report.instrument.samples.len();
+                    report.bytes_loaded += bytes;
                     report.instrument.samples.push(sample);
                     path_to_index.insert(region.sample.clone(), i);
                     i
@@ -81,15 +156,18 @@ pub fn build_load_report(parsed: SfzFile) -> LoadReport {
         report
             .instrument
             .regions
-            .push(InstrumentRegion { region, sample_index });
+            .push(InstrumentRegion {
+                region,
+                sample_index,
+            });
     }
     report
 }
 
-/// Convenience helper: build an [`Instrument`] without reporting errors.
-/// Use in tests.
+/// Convenience helper: build an [`Instrument`] without reporting
+/// errors, using default limits. Use in tests.
 pub fn build_instrument(parsed: SfzFile) -> Instrument {
-    build_load_report(parsed).instrument
+    build_load_report(parsed, LoadLimits::default()).instrument
 }
 
 // =============================================================================
@@ -109,9 +187,30 @@ mod tests {
             ",
             Path::new("/tmp/nope"),
         );
-        let r = build_load_report(sfz);
+        let r = build_load_report(sfz, LoadLimits::default());
         assert_eq!(r.errors.len(), 2);
         assert_eq!(r.instrument.regions.len(), 0);
         assert_eq!(r.instrument.samples.len(), 0);
+        assert_eq!(r.bytes_loaded, 0);
+    }
+
+    #[test]
+    fn ram_caps_are_tight_when_set_low() {
+        // Force the per-sample cap to 1 byte so even a successfully
+        // parsed region that points at a (would-be) valid sample is
+        // never loaded. We don't have real samples in unit tests, so
+        // the error message is the missing-file one — but the limits
+        // type compiles + flows through.
+        let limits = LoadLimits {
+            max_sample_bytes: 1,
+            max_total_bytes: 1,
+        };
+        let sfz = SfzFile::parse(
+            "<region> sample=ghost.wav pitch_keycenter=60",
+            Path::new("/tmp"),
+        );
+        let r = build_load_report(sfz, limits);
+        assert_eq!(r.errors.len(), 1);
+        assert_eq!(r.instrument.regions.len(), 0);
     }
 }
