@@ -9,11 +9,13 @@
 //! ```
 
 use std::env;
+use std::io::Write;
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::time::Instant;
 
 use stardust_sfz::engine::Engine;
-use stardust_sfz::instrument::load_sfz;
+use stardust_sfz::instrument::{load_sfz_with_progress, LoadLimits};
 
 fn main() -> anyhow::Result<()> {
     let mut args = env::args().skip(1);
@@ -22,12 +24,25 @@ fn main() -> anyhow::Result<()> {
     })?);
     let out_path = PathBuf::from(args.next().unwrap_or_else(|| "out.wav".to_string()));
 
-    let report = load_sfz(&sfz_path)?;
+    println!("Reading + parsing {}", sfz_path.display());
+    let started = Instant::now();
+    let report = load_sfz_with_progress(&sfz_path, LoadLimits::default(), |p| {
+        // Per-sample dot, with periodic "N/M" markers so the user
+        // sees the loader is alive and roughly where it is.
+        if p.index == 1 || p.index == p.total || p.index % 10 == 0 {
+            print!("\n  [{}/{}] {} MiB so far — {}", p.index, p.total, p.bytes_loaded / (1024 * 1024), p.path.display());
+        } else {
+            print!(".");
+        }
+        let _ = std::io::stdout().flush();
+    })?;
+    println!();
     println!(
-        "Loaded {}: {} regions, {} samples ({} errors)",
-        sfz_path.display(),
+        "Loaded in {:.1?}: {} regions, {} unique samples, {} MiB RAM ({} errors)",
+        started.elapsed(),
         report.instrument.regions.len(),
         report.instrument.samples.len(),
+        report.bytes_loaded / (1024 * 1024),
         report.errors.len()
     );
     for (p, msg) in &report.errors {
@@ -46,8 +61,13 @@ fn main() -> anyhow::Result<()> {
     let hold_frames = sample_rate as usize * 4 / 10; // 400ms
     let tail_frames = sample_rate as usize * 6 / 10; // 600ms
     let total_frames = notes.len() * hold_frames + tail_frames;
-    let mut buffer = vec![0.0f32; total_frames * 2];
+    let total_seconds = total_frames as f32 / sample_rate as f32;
+    println!(
+        "Rendering arpeggio C E G C ({:.1}s of audio @ {} Hz stereo)…",
+        total_seconds, sample_rate
+    );
 
+    let mut buffer = vec![0.0f32; total_frames * 2];
     let mut cursor = 0usize;
     for &note in &notes {
         engine.note_on(0, note, 100);
@@ -58,6 +78,12 @@ fn main() -> anyhow::Result<()> {
     }
     let tail = &mut buffer[cursor * 2..];
     engine.render_into_stereo(tail);
+
+    let peak = buffer.iter().map(|s| s.abs()).fold(0.0f32, f32::max);
+    if peak == 0.0 {
+        eprintln!("⚠ buffer is silent — no region matched the notes (C4 E4 G4 C5).");
+        eprintln!("   Check the instrument's key range covers these notes.");
+    }
 
     let spec = hound::WavSpec {
         channels: 2,
@@ -71,6 +97,11 @@ fn main() -> anyhow::Result<()> {
         writer.write_sample(s)?;
     }
     writer.finalize()?;
-    println!("Wrote {} ({total_frames} frames)", out_path.display());
+    println!(
+        "✓ Wrote {} ({:.1}s, peak {:.3}). Open it in any audio player.",
+        out_path.display(),
+        total_seconds,
+        peak
+    );
     Ok(())
 }

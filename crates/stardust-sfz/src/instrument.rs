@@ -86,6 +86,23 @@ pub struct LoadReport {
     pub bytes_loaded: usize,
 }
 
+/// Progress event reported by [`build_load_report_with_progress`] as
+/// each unique sample is processed. Lets long-running loads surface
+/// "loading 47/162: kick.wav" UI without coupling the loader to any
+/// particular logging or progress crate.
+#[derive(Debug, Clone)]
+pub struct LoadProgress<'a> {
+    /// Path the loader is about to read.
+    pub path: &'a Path,
+    /// 1-based index of this unique sample within the total set.
+    pub index: usize,
+    /// Total number of unique samples the loader expects to read.
+    pub total: usize,
+    /// Cumulative decoded RAM after this sample (zero before the
+    /// sample is loaded; populated after, on the same callback call).
+    pub bytes_loaded: usize,
+}
+
 /// Read an `.sfz` file from disk, parse it, and load every sample it
 /// references with default RAM limits.
 pub fn load_sfz(path: &Path) -> Result<LoadReport, std::io::Error> {
@@ -97,61 +114,108 @@ pub fn load_sfz_with_limits(
     path: &Path,
     limits: LoadLimits,
 ) -> Result<LoadReport, std::io::Error> {
+    load_sfz_with_progress(path, limits, |_| {})
+}
+
+/// [`load_sfz`] + a progress callback fired once per unique sample
+/// (deduplicated by path) before the WAV decode starts.
+pub fn load_sfz_with_progress<F>(
+    path: &Path,
+    limits: LoadLimits,
+    progress: F,
+) -> Result<LoadReport, std::io::Error>
+where
+    F: FnMut(&LoadProgress<'_>),
+{
     let text = std::fs::read_to_string(path)?;
     let base = path
         .parent()
         .map(|p| p.to_path_buf())
         .unwrap_or_else(|| PathBuf::from("."));
     let parsed = SfzFile::parse(&text, &base);
-    Ok(build_load_report(parsed, limits))
+    Ok(build_load_report_with_progress(parsed, limits, progress))
 }
 
 /// Pure-data variant: takes an already-parsed file. Useful in tests
 /// and when the SFZ text comes from a non-file source.
 pub fn build_load_report(parsed: SfzFile, limits: LoadLimits) -> LoadReport {
+    build_load_report_with_progress(parsed, limits, |_| {})
+}
+
+/// [`build_load_report`] + per-sample progress callback.
+pub fn build_load_report_with_progress<F>(
+    parsed: SfzFile,
+    limits: LoadLimits,
+    mut progress: F,
+) -> LoadReport
+where
+    F: FnMut(&LoadProgress<'_>),
+{
     let mut report = LoadReport::default();
     let mut path_to_index: HashMap<PathBuf, usize> = HashMap::new();
+
+    // Count unique sample paths up front so the progress total is
+    // honest. Cheap because regions hold owned PathBufs.
+    let total_unique = {
+        let mut seen = std::collections::HashSet::new();
+        parsed
+            .regions
+            .iter()
+            .filter(|r| seen.insert(r.sample.clone()))
+            .count()
+    };
+
+    let mut unique_index = 0usize;
     for region in parsed.regions {
         let sample_index = match path_to_index.get(&region.sample).copied() {
             Some(i) => i,
-            None => match Sample::load_wav(&region.sample) {
-                Ok(sample) => {
-                    let bytes = sample.data.len() * std::mem::size_of::<f32>();
-                    if bytes > limits.max_sample_bytes {
-                        report.errors.push((
-                            region.sample.clone(),
-                            format!(
-                                "sample is {} MiB; over max_sample_bytes cap of {} MiB",
-                                bytes / (1024 * 1024),
-                                limits.max_sample_bytes / (1024 * 1024)
-                            ),
-                        ));
+            None => {
+                unique_index += 1;
+                progress(&LoadProgress {
+                    path: &region.sample,
+                    index: unique_index,
+                    total: total_unique,
+                    bytes_loaded: report.bytes_loaded,
+                });
+                match Sample::load_wav(&region.sample) {
+                    Ok(sample) => {
+                        let bytes = sample.data.len() * std::mem::size_of::<f32>();
+                        if bytes > limits.max_sample_bytes {
+                            report.errors.push((
+                                region.sample.clone(),
+                                format!(
+                                    "sample is {} MiB; over max_sample_bytes cap of {} MiB",
+                                    bytes / (1024 * 1024),
+                                    limits.max_sample_bytes / (1024 * 1024)
+                                ),
+                            ));
+                            continue;
+                        }
+                        if report.bytes_loaded + bytes > limits.max_total_bytes {
+                            report.errors.push((
+                                region.sample.clone(),
+                                format!(
+                                    "would exceed max_total_bytes cap of {} MiB \
+                                     (currently {} MiB loaded, +{} MiB requested)",
+                                    limits.max_total_bytes / (1024 * 1024),
+                                    report.bytes_loaded / (1024 * 1024),
+                                    bytes / (1024 * 1024)
+                                ),
+                            ));
+                            continue;
+                        }
+                        let i = report.instrument.samples.len();
+                        report.bytes_loaded += bytes;
+                        report.instrument.samples.push(sample);
+                        path_to_index.insert(region.sample.clone(), i);
+                        i
+                    }
+                    Err(e) => {
+                        report.errors.push((region.sample.clone(), format!("{e}")));
                         continue;
                     }
-                    if report.bytes_loaded + bytes > limits.max_total_bytes {
-                        report.errors.push((
-                            region.sample.clone(),
-                            format!(
-                                "would exceed max_total_bytes cap of {} MiB \
-                                 (currently {} MiB loaded, +{} MiB requested)",
-                                limits.max_total_bytes / (1024 * 1024),
-                                report.bytes_loaded / (1024 * 1024),
-                                bytes / (1024 * 1024)
-                            ),
-                        ));
-                        continue;
-                    }
-                    let i = report.instrument.samples.len();
-                    report.bytes_loaded += bytes;
-                    report.instrument.samples.push(sample);
-                    path_to_index.insert(region.sample.clone(), i);
-                    i
                 }
-                Err(e) => {
-                    report.errors.push((region.sample.clone(), format!("{e}")));
-                    continue;
-                }
-            },
+            }
         };
         report
             .instrument
