@@ -86,7 +86,7 @@ fn main() -> Result<()> {
     //    MidiMessage and pushes into the SPSC. The closure must NOT
     //    allocate or block — `producer.push` is wait-free.
     // ---------------------------------------------------------------
-    let midi_handle = open_input(&midi_info.name, move |_ts_ns, msg| {
+    let _midi_handle = open_input(&midi_info.name, move |_ts_ns, msg| {
         // Only push channel-voice messages the synth can act on. Everything
         // else (Other, realtime) is dropped at the source so the audio
         // thread doesn't burn cycles ignoring them.
@@ -159,13 +159,11 @@ fn main() -> Result<()> {
         }
     }
 
-    // Unreachable, but keeps drop-order intent explicit.
+    // Unreachable — loop above runs forever until Ctrl-C terminates the
+    // process. `_midi_handle` + `audio_handle` are held in scope for the
+    // duration of the run.
     #[allow(unreachable_code)]
-    {
-        drop(audio_handle);
-        drop(midi_handle);
-        Ok(())
-    }
+    Ok(())
 }
 
 fn prompt_index(label: &str, max: usize) -> Result<usize> {
