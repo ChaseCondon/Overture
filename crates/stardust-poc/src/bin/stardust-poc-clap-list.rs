@@ -29,9 +29,36 @@ fn main() -> Result<()> {
 
     println!("CLAP search paths ({}):", paths.len());
     for p in &paths {
-        let exists = p.exists();
-        let tag = if exists { "" } else { "  [not present]" };
-        println!("  {}{}", p.display(), tag);
+        if !p.exists() {
+            println!("  {}  [not present]", p.display());
+            continue;
+        }
+        // Quick non-recursive listing of the top level so users can see
+        // what's actually under the search root. Helps when the scan
+        // finds nothing (typically because the host expected plugins
+        // a level deeper or in a different root entirely).
+        match std::fs::read_dir(p) {
+            Ok(read) => {
+                let entries: Vec<_> = read.flatten().collect();
+                if entries.is_empty() {
+                    println!("  {}  [empty]", p.display());
+                } else {
+                    println!("  {}  [{} entries]", p.display(), entries.len());
+                    for e in entries.iter().take(8) {
+                        let kind = if e.file_type().map(|t| t.is_dir()).unwrap_or(false) {
+                            "dir "
+                        } else {
+                            "file"
+                        };
+                        println!("      {} {}", kind, e.file_name().to_string_lossy());
+                    }
+                    if entries.len() > 8 {
+                        println!("      … +{} more", entries.len() - 8);
+                    }
+                }
+            }
+            Err(e) => println!("  {}  [unreadable: {e}]", p.display()),
+        }
     }
     println!();
 

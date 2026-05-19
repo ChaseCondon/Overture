@@ -164,15 +164,33 @@ fn dedupe_paths(mut v: Vec<PathBuf>) -> Vec<PathBuf> {
 // Scanning
 // =============================================================================
 
-/// Scan one directory (non-recursive) for `.clap` bundles and describe
-/// each. Symlinks are followed; subdirectories are NOT entered except on
-/// macOS, where `.clap` is a bundle directory whose contents the loader
-/// resolves internally.
+/// Maximum directory depth the scanner walks. Most vendors install one
+/// or two levels deep (`CLAP/Vendor/Plugin.clap`); a small cap prevents
+/// pathological symlink loops or accidental scans of system-wide trees.
+const MAX_SCAN_DEPTH: usize = 4;
+
+/// Scan one directory **recursively** for `.clap` bundles and describe
+/// each. Most vendors install at least one level deep (e.g.
+/// `CLAP/u-he/Diva.clap`), so a top-level-only scan misses almost
+/// everything in practice.
+///
+/// On macOS `.clap` is itself a bundle DIRECTORY — the scanner treats
+/// any path ending in `.clap` as terminal and does not descend into it.
+/// Symlinks are followed; depth is capped at [`MAX_SCAN_DEPTH`] to
+/// guard against pathological loops.
 pub fn scan_dir(dir: &Path) -> ScanResult {
     let mut result = ScanResult::default();
+    scan_dir_recursive(dir, 0, &mut result);
+    result
+}
+
+fn scan_dir_recursive(dir: &Path, depth: usize, result: &mut ScanResult) {
+    if depth > MAX_SCAN_DEPTH {
+        return;
+    }
     let read = match std::fs::read_dir(dir) {
         Ok(r) => r,
-        Err(_) => return result, // missing/unreadable dir is not an error
+        Err(_) => return, // missing/unreadable dir is not an error
     };
     for entry in read.flatten() {
         let path = entry.path();
@@ -181,15 +199,25 @@ pub fn scan_dir(dir: &Path) -> ScanResult {
             .and_then(|s| s.to_str())
             .map(|s| s.eq_ignore_ascii_case("clap"))
             .unwrap_or(false);
-        if !is_clap {
+        if is_clap {
+            // Terminal: load the bundle (works for .clap files on
+            // Linux/Windows and .clap bundle dirs on macOS — clack-host
+            // handles both).
+            match load_bundle(&path) {
+                Ok(b) => result.bundles.push(b),
+                Err(e) => result.errors.push((path, format!("{e}"))),
+            }
             continue;
         }
-        match load_bundle(&path) {
-            Ok(b) => result.bundles.push(b),
-            Err(e) => result.errors.push((path, format!("{e}"))),
+        // Recurse into regular subdirectories (vendor folders etc.).
+        let is_dir = entry
+            .file_type()
+            .map(|t| t.is_dir() || t.is_symlink())
+            .unwrap_or(false);
+        if is_dir {
+            scan_dir_recursive(&path, depth + 1, result);
         }
     }
-    result
 }
 
 /// Scan multiple directories and merge the results. Duplicate `.clap`
