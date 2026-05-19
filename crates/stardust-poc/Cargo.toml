@@ -1,0 +1,19 @@
+[package]
+name = "stardust-poc"
+description = "Integration POC bins for stardust-core — proves the MIDI → ring buffer → audio thread → synth pipeline works end-to-end before plugin hosting lands."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+authors.workspace = true
+readme.workspace = true
+publish = false
+
+[dependencies]
+stardust-midi = { workspace = true }
+stardust-audio = { workspace = true }
+stardust-rt = { workspace = true }
+stardust-dsp = { workspace = true }
+anyhow = { workspace = true }

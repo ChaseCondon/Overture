@@ -34,6 +34,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "anyhow"
+version = "1.0.102"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7f202df86484c868dbad7eaa557ef785d5c66295e41b460ef922eca0723b842c"
+
+[[package]]
 name = "asio-sys"
 version = "0.2.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1009,6 +1015,17 @@ dependencies = [
  "stardust-rt",
  "thiserror 2.0.18",
  "tracing",
+]
+
+[[package]]
+name = "stardust-poc"
+version = "0.0.1"
+dependencies = [
+ "anyhow",
+ "stardust-audio",
+ "stardust-dsp",
+ "stardust-midi",
+ "stardust-rt",
 ]
 
 [[package]]

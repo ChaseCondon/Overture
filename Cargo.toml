@@ -8,6 +8,7 @@ members = [
     "crates/stardust-dsp",
     "crates/stardust-rt",
     "crates/stardust-ipc",
+    "crates/stardust-poc",
 ]
 
 [workspace.package]
