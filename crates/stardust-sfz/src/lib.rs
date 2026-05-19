@@ -199,13 +199,22 @@ impl<'a> PluginAudioProcessor<'a, SharedState, MainThread<'a>> for Processor<'a>
             // Host gave us a bigger block than promised — grow once.
             self.scratch.resize(needed, 0.0);
         }
-        let scratch = &mut self.scratch[..needed];
-        scratch.fill(0.0);
+        // Zero the scratch region we're about to render into. Done as
+        // an inline scope so the borrow ends before the event loop
+        // re-borrows self.scratch on each render call.
+        self.scratch[..needed].fill(0.0);
 
         // Process events sample-accurately by splitting the render at
         // event boundaries. Each batch carries its first sample index;
         // the next batch's first sample is this batch's end (or the
         // buffer end for the final batch).
+        //
+        // We re-slice into self.scratch at each render site rather
+        // than hoisting a `&mut self.scratch[..]` borrow over the loop,
+        // so the borrow checker can split-borrow self.scratch (held
+        // briefly) and self.engine (called via render_into_stereo)
+        // disjointly — and so self.handle_event can take &mut self in
+        // the same iteration.
         let mut cursor = 0usize;
         for batch in events.input.batch() {
             for event in batch.events() {
@@ -216,22 +225,22 @@ impl<'a> PluginAudioProcessor<'a, SharedState, MainThread<'a>> for Processor<'a>
                 .unwrap_or(frames)
                 .min(frames);
             if end > cursor {
-                let slice = &mut scratch[cursor * 2..end * 2];
-                self.engine.render_into_stereo(slice);
+                self.engine
+                    .render_into_stereo(&mut self.scratch[cursor * 2..end * 2]);
                 cursor = end;
             }
         }
         // Render any remaining frames past the last event batch.
         if cursor < frames {
-            let slice = &mut scratch[cursor * 2..frames * 2];
-            self.engine.render_into_stereo(slice);
+            self.engine
+                .render_into_stereo(&mut self.scratch[cursor * 2..frames * 2]);
         }
 
         // Deinterleave into host channels.
         for ch_idx in 0..channels.channel_count().min(2) {
             if let Some(ch) = channels.channel_mut(ch_idx) {
                 for i in 0..frames {
-                    ch[i] = scratch[i * 2 + ch_idx as usize];
+                    ch[i] = self.scratch[i * 2 + ch_idx as usize];
                 }
             }
         }
