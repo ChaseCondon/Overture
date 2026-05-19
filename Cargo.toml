@@ -9,6 +9,7 @@ members = [
     "crates/stardust-rt",
     "crates/stardust-ipc",
     "crates/stardust-poc",
+    "crates/stardust-sfz",
 ]
 
 [workspace.package]
@@ -39,8 +40,13 @@ shared_memory = "0.12"
 memmap2 = "0.9"
 bytemuck = { version = "1.16", features = ["derive"] }
 
-# CLAP hosting
+# CLAP hosting (host) + plugin authoring (plugin) sides
 clack-host = "0.1"
+clack-plugin = "0.1"
+clack-extensions = "0.1"
+
+# Sample loading for built-in plugins
+hound = "3"
 
 # Error handling
 thiserror = "2"
@@ -56,6 +62,7 @@ stardust-plugin = { path = "crates/stardust-plugin", version = "0.0.1" }
 stardust-dsp = { path = "crates/stardust-dsp", version = "0.0.1" }
 stardust-rt = { path = "crates/stardust-rt", version = "0.0.1" }
 stardust-ipc = { path = "crates/stardust-ipc", version = "0.0.1" }
+stardust-sfz = { path = "crates/stardust-sfz", version = "0.0.1" }
 
 [profile.release]
 lto = "thin"

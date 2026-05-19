@@ -180,6 +180,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "clack-extensions"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0f7a09059637aa2043aeaab65e1d95bc91f340da1f05512c0c00e6e0283e5d9b"
+dependencies = [
+ "bitflags 2.11.1",
+ "clack-common",
+ "clack-plugin",
+ "clap-sys",
+]
+
+[[package]]
 name = "clack-host"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -189,6 +201,16 @@ dependencies = [
  "clap-sys",
  "libloading",
  "objc2-foundation",
+]
+
+[[package]]
+name = "clack-plugin"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ab76aa9fd46c79fbd5770e86a14d0a9d97adb239ff9173b51e3f5101aeb32c73"
+dependencies = [
+ "clack-common",
+ "clap-sys",
 ]
 
 [[package]]
@@ -376,6 +398,12 @@ name = "hashbrown"
 version = "0.17.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ed5909b6e89a2db4456e54cd5f673791d7eca6732202bbf2a9cc504fe2f9b84a"
+
+[[package]]
+name = "hound"
+version = "3.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "62adaabb884c94955b19907d60019f4e145d091c75345379e70d1ee696f7854f"
 
 [[package]]
 name = "indexmap"
@@ -1034,6 +1062,18 @@ name = "stardust-rt"
 version = "0.0.1"
 dependencies = [
  "rtrb",
+]
+
+[[package]]
+name = "stardust-sfz"
+version = "0.0.1"
+dependencies = [
+ "anyhow",
+ "clack-extensions",
+ "clack-plugin",
+ "hound",
+ "thiserror 2.0.18",
+ "tracing",
 ]
 
 [[package]]

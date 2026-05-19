@@ -1,0 +1,29 @@
+[package]
+name = "stardust-sfz"
+description = "Stardust's built-in CLAP SFZ sampler instrument. Parses a minimal SFZ subset (regions with sample/key range/velocity range/pitch_keycenter/volume), loads WAV samples into RAM, and plays them back as a pitched polyphonic instrument. The convention place for first-party Stardust CLAP plugins."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+authors.workspace = true
+readme = "README.md"
+categories = ["multimedia::audio"]
+keywords = ["clap", "sfz", "sampler", "audio-plugin", "instrument"]
+
+# Two crate-types so the same code compiles both as a Rust library (for
+# the internal tests + the offline render example) and as the C dynamic
+# library the CLAP host loads. Building --release yields the .clap file.
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+clack-plugin = { workspace = true }
+clack-extensions = { workspace = true, features = ["audio-ports", "clack-plugin", "note-ports"] }
+hound = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+
+[dev-dependencies]
+anyhow = { workspace = true }
