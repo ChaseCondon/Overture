@@ -8,8 +8,77 @@
 use std::ffi::CStr;
 use std::path::{Path, PathBuf};
 
-use clack_host::entry::{PluginEntry, PluginEntryError};
+use clack_host::entry::PluginEntryError;
+use clack_host::prelude::{HostHandlers, HostInfo, SharedHandler};
 use thiserror::Error;
+
+pub use clack_host::entry::PluginEntry;
+
+// Re-export the parts of clack-host any consumer of this crate would
+// need to actually instantiate + drive a plugin. Keeps the
+// stardust-plugin API surface coherent and lets callers stay off the
+// clack-host crate root directly.
+pub use clack_host::events::event_types::{MidiEvent, NoteOffEvent, NoteOnEvent};
+pub use clack_host::events::io::{EventBuffer, InputEvents, OutputEvents};
+pub use clack_host::events::Pckn;
+pub use clack_host::plugin::PluginInstance;
+pub use clack_host::process::audio_buffers::{
+    AudioPortBuffer, AudioPortBufferType, AudioPorts, InputChannel,
+};
+pub use clack_host::process::{
+    PluginAudioConfiguration, ProcessStatus, StartedPluginAudioProcessor,
+    StoppedPluginAudioProcessor,
+};
+pub use clack_host::utils::ClapId;
+
+// =============================================================================
+// Stardust host implementation
+// =============================================================================
+
+/// The host identity Stardust presents to CLAP plugins.
+///
+/// `name` / `vendor` / `url` / `version` are reported back to plugins
+/// via the CLAP host info struct so plugins can do telemetry, pick
+/// host-specific workarounds, etc. This is the "I am Stardust" badge.
+pub fn host_info() -> HostInfo {
+    HostInfo::new(
+        "Stardust",
+        "Stardust",
+        "https://github.com/StardustMT",
+        env!("CARGO_PKG_VERSION"),
+    )
+    .expect("static HostInfo strings must be valid")
+}
+
+/// Stub host shared-state handler. Plugins call `request_*` on this
+/// when they want the host to do something off-thread; for the POC we
+/// log + ignore. Real implementations will queue these requests into a
+/// ring buffer for the engine to drain on its main-thread tick.
+pub struct StardustHostShared;
+
+impl<'a> SharedHandler<'a> for StardustHostShared {
+    fn request_restart(&self) {
+        tracing::debug!(target: "stardust_plugin", "plugin requested restart (ignored)");
+    }
+    fn request_process(&self) {
+        tracing::debug!(target: "stardust_plugin", "plugin requested process (ignored)");
+    }
+    fn request_callback(&self) {
+        tracing::debug!(target: "stardust_plugin", "plugin requested main-thread callback (ignored)");
+    }
+}
+
+/// Top-level host type. All three thread-bound state types are unit
+/// stubs for the POC — real engine code will replace them with types
+/// that own request queues, parameter caches, etc.
+pub struct StardustHost;
+
+impl HostHandlers for StardustHost {
+    type Shared<'a> = StardustHostShared;
+    type MainThread<'a> = ();
+    type AudioProcessor<'a> = ();
+}
+
 
 // =============================================================================
 // Errors
@@ -148,6 +217,7 @@ pub fn default_clap_search_paths() -> Vec<PathBuf> {
     dedupe_paths(out)
 }
 
+#[cfg(any(target_os = "macos", all(unix, not(target_os = "macos"))))]
 fn dirs_home() -> Option<PathBuf> {
     std::env::var_os("HOME")
         .map(PathBuf::from)
