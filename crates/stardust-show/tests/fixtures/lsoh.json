@@ -1,0 +1,162 @@
+{
+  "kind": "stardust.show",
+  "schemaVersion": 1,
+  "show": {
+    "name": "Little Shop of Horrors",
+    "rig": {
+      "sources": [
+        { "kind": "source.keyboard", "label": "Nord Stage 3 keys" },
+        { "kind": "source.sustain-pedal", "label": "Sustain pedal" },
+        { "kind": "source.expression-pedal", "label": "Expression pedal" },
+        { "kind": "source.mod-wheel", "label": "Mod wheel" },
+        { "kind": "source.pitch-wheel", "label": "Pitch bend" }
+      ]
+    },
+    "songs": [
+      {
+        "id": "s1",
+        "number": 1,
+        "name": "Prologue",
+        "patches": [
+          {
+            "id": "p1.1",
+            "number": 1,
+            "name": "Cold open",
+            "graph": {
+              "nodes": [
+                {
+                  "id": "n1",
+                  "kind": "source.keyboard",
+                  "name": "Main keyboard",
+                  "x": 80,
+                  "y": 220,
+                  "ports": [
+                    { "id": "out", "label": "MIDI out", "signal": "midi", "direction": "out" }
+                  ]
+                },
+                {
+                  "id": "n2",
+                  "kind": "instrument.sine",
+                  "name": "Sine synth",
+                  "x": 420,
+                  "y": 220,
+                  "ports": [
+                    { "id": "midi-in", "label": "MIDI in", "signal": "midi", "direction": "in" },
+                    { "id": "audio-l", "label": "Audio L", "signal": "audio", "direction": "out", "config": { "kind": "stereo", "channel": "L" } },
+                    { "id": "audio-r", "label": "Audio R", "signal": "audio", "direction": "out", "config": { "kind": "stereo", "channel": "R" } }
+                  ],
+                  "config": { "polyphony": 8 }
+                },
+                {
+                  "id": "n3",
+                  "kind": "sink.main-out",
+                  "name": "Main output",
+                  "x": 760,
+                  "y": 220,
+                  "ports": [
+                    { "id": "in-l", "label": "In L", "signal": "audio", "direction": "in", "config": { "kind": "stereo", "channel": "L" } },
+                    { "id": "in-r", "label": "In R", "signal": "audio", "direction": "in", "config": { "kind": "stereo", "channel": "R" } }
+                  ]
+                }
+              ],
+              "wires": [
+                { "id": "w1", "fromNode": "n1", "fromPort": "out", "toNode": "n2", "toPort": "midi-in" },
+                { "id": "w2", "fromNode": "n2", "fromPort": "audio-l", "toNode": "n3", "toPort": "in-l" },
+                { "id": "w3", "fromNode": "n2", "fromPort": "audio-r", "toNode": "n3", "toPort": "in-r" }
+              ],
+              "composites": []
+            }
+          },
+          {
+            "id": "p1.2",
+            "number": 2,
+            "name": "Underscoring",
+            "graph": {
+              "nodes": [
+                {
+                  "id": "n1",
+                  "kind": "source.keyboard",
+                  "name": "Keys",
+                  "x": 80,
+                  "y": 220,
+                  "ports": [
+                    { "id": "out", "label": "MIDI out", "signal": "midi", "direction": "out" }
+                  ]
+                },
+                {
+                  "id": "n2",
+                  "kind": "sink.main-out",
+                  "name": "Main output",
+                  "x": 760,
+                  "y": 220,
+                  "ports": [
+                    { "id": "in-l", "label": "In L", "signal": "audio", "direction": "in", "config": { "kind": "stereo", "channel": "L" } },
+                    { "id": "in-r", "label": "In R", "signal": "audio", "direction": "in", "config": { "kind": "stereo", "channel": "R" } }
+                  ]
+                }
+              ],
+              "wires": [],
+              "composites": []
+            }
+          }
+        ]
+      },
+      {
+        "id": "s2",
+        "number": 2,
+        "name": "Skid Row (Downtown)",
+        "patches": [
+          {
+            "id": "p2.1",
+            "number": 1,
+            "name": "Verse groove",
+            "graph": {
+              "nodes": [
+                {
+                  "id": "n1",
+                  "kind": "source.keyboard",
+                  "name": "Keys",
+                  "x": 80,
+                  "y": 220,
+                  "ports": [
+                    { "id": "out", "label": "MIDI out", "signal": "midi", "direction": "out" }
+                  ]
+                },
+                {
+                  "id": "n2",
+                  "kind": "instrument.sine",
+                  "name": "Sine bass",
+                  "x": 420,
+                  "y": 220,
+                  "ports": [
+                    { "id": "midi-in", "label": "MIDI in", "signal": "midi", "direction": "in" },
+                    { "id": "audio-l", "label": "Audio L", "signal": "audio", "direction": "out", "config": { "kind": "stereo", "channel": "L" } },
+                    { "id": "audio-r", "label": "Audio R", "signal": "audio", "direction": "out", "config": { "kind": "stereo", "channel": "R" } }
+                  ]
+                },
+                {
+                  "id": "n3",
+                  "kind": "sink.main-out",
+                  "name": "Main output",
+                  "x": 760,
+                  "y": 220,
+                  "ports": [
+                    { "id": "in-l", "label": "In L", "signal": "audio", "direction": "in", "config": { "kind": "stereo", "channel": "L" } },
+                    { "id": "in-r", "label": "In R", "signal": "audio", "direction": "in", "config": { "kind": "stereo", "channel": "R" } }
+                  ]
+                }
+              ],
+              "wires": [
+                { "id": "w1", "fromNode": "n1", "fromPort": "out", "toNode": "n2", "toPort": "midi-in" },
+                { "id": "w2", "fromNode": "n2", "fromPort": "audio-l", "toNode": "n3", "toPort": "in-l" },
+                { "id": "w3", "fromNode": "n2", "fromPort": "audio-r", "toNode": "n3", "toPort": "in-r" }
+              ],
+              "composites": []
+            }
+          }
+        ]
+      }
+    ],
+    "savedBlocks": []
+  }
+}

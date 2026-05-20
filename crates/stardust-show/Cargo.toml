@@ -1,0 +1,19 @@
+[package]
+name = "stardust-show"
+description = "Show data model for Stardust: songs, patches (inlined graphs), rig, saved blocks. JSON persistence with schema versioning (ADR-0003 / ADR-0005). Pure data; no audio, IPC, or UI deps."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+authors.workspace = true
+readme.workspace = true
+categories = ["multimedia", "data-structures"]
+keywords = ["show", "patch", "audio", "midi", "live-performance"]
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+stardust-patch = { workspace = true }

@@ -9,6 +9,7 @@ members = [
     "crates/stardust-rt",
     "crates/stardust-ipc",
     "crates/stardust-patch",
+    "crates/stardust-show",
     "crates/stardust-poc",
     "crates/stardust-sfz",
 ]
@@ -68,6 +69,7 @@ stardust-dsp = { path = "crates/stardust-dsp", version = "0.0.1" }
 stardust-rt = { path = "crates/stardust-rt", version = "0.0.1" }
 stardust-ipc = { path = "crates/stardust-ipc", version = "0.0.1" }
 stardust-patch = { path = "crates/stardust-patch", version = "0.0.1" }
+stardust-show = { path = "crates/stardust-show", version = "0.0.1" }
 stardust-sfz = { path = "crates/stardust-sfz", version = "0.0.1" }
 
 [profile.release]

@@ -17,6 +17,7 @@
 //! | `rt`     | [`stardust_rt`] — RT-safe primitives        |
 //! | `ipc`    | [`stardust_ipc`] — sandboxing IPC           |
 //! | `patch`  | [`stardust_patch`] — patch-graph data model |
+//! | `show`   | [`stardust_show`] — show data model         |
 //! | `full`   | All of the above                            |
 //!
 //! Defaults: `audio`, `midi`, `rt`.
@@ -41,3 +42,6 @@ pub use stardust_ipc as ipc;
 
 #[cfg(feature = "patch")]
 pub use stardust_patch as patch;
+
+#[cfg(feature = "show")]
+pub use stardust_show as show;

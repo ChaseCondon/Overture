@@ -1063,6 +1063,7 @@ dependencies = [
  "stardust-patch",
  "stardust-plugin",
  "stardust-rt",
+ "stardust-show",
 ]
 
 [[package]]
@@ -1143,6 +1144,16 @@ dependencies = [
  "stardust-dsp",
  "thiserror 2.0.18",
  "tracing",
+]
+
+[[package]]
+name = "stardust-show"
+version = "0.0.1"
+dependencies = [
+ "serde",
+ "serde_json",
+ "stardust-patch",
+ "thiserror 2.0.18",
 ]
 
 [[package]]
