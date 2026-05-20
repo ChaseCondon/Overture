@@ -16,6 +16,7 @@
 //! | `dsp`    | [`stardust_dsp`] — built-in effects         |
 //! | `rt`     | [`stardust_rt`] — RT-safe primitives        |
 //! | `ipc`    | [`stardust_ipc`] — sandboxing IPC           |
+//! | `patch`  | [`stardust_patch`] — patch-graph data model |
 //! | `full`   | All of the above                            |
 //!
 //! Defaults: `audio`, `midi`, `rt`.
@@ -37,3 +38,6 @@ pub use stardust_rt as rt;
 
 #[cfg(feature = "ipc")]
 pub use stardust_ipc as ipc;
+
+#[cfg(feature = "patch")]
+pub use stardust_patch as patch;

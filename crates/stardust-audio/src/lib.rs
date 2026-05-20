@@ -178,17 +178,18 @@ where
     }
 
     // Choose the config: try to honour preferred_sample_rate, fall back to default.
+    // cpal 0.17 made SampleRate a plain `u32` (was a tuple newtype in 0.16).
     let chosen_config: StreamConfig = match preferred_sample_rate {
         Some(want) => supported
             .iter()
-            .find(|c| c.min_sample_rate().0 <= want && c.max_sample_rate().0 >= want)
-            .map(|c| c.clone().with_sample_rate(cpal::SampleRate(want)).config())
+            .find(|c| c.min_sample_rate() <= want && c.max_sample_rate() >= want)
+            .map(|c| c.clone().with_sample_rate(want).config())
             .unwrap_or_else(|| default_config.config()),
         None => default_config.config(),
     };
 
     let spec = AudioSpec {
-        sample_rate: chosen_config.sample_rate.0,
+        sample_rate: chosen_config.sample_rate,
         channels: chosen_config.channels,
     };
     let spec_for_cb = spec;

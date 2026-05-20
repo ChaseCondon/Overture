@@ -20,7 +20,8 @@ plugin = ["dep:stardust-plugin"]
 dsp = ["dep:stardust-dsp"]
 rt = ["dep:stardust-rt"]
 ipc = ["dep:stardust-ipc"]
-full = ["audio", "midi", "plugin", "dsp", "rt", "ipc"]
+patch = ["dep:stardust-patch"]
+full = ["audio", "midi", "plugin", "dsp", "rt", "ipc", "patch"]
 
 [dependencies]
 stardust-audio = { workspace = true, optional = true }
@@ -29,3 +30,4 @@ stardust-plugin = { workspace = true, optional = true }
 stardust-dsp = { workspace = true, optional = true }
 stardust-rt = { workspace = true, optional = true }
 stardust-ipc = { workspace = true, optional = true }
+stardust-patch = { workspace = true, optional = true }

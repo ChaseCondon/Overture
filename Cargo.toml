@@ -25,7 +25,7 @@ readme = "README.md"
 
 [workspace.dependencies]
 # Audio
-cpal = "0.16"
+cpal = "0.17"
 
 # MIDI
 midir = "0.10"
