@@ -1,0 +1,90 @@
+{
+  "kind": "stardust.patch",
+  "schemaVersion": 1,
+  "graph": {
+    "nodes": [
+      {
+        "id": "n1",
+        "kind": "source.keyboard",
+        "name": "Main keyboard",
+        "x": 80,
+        "y": 220,
+        "ports": [
+          { "id": "out", "label": "MIDI out", "signal": "midi", "direction": "out" }
+        ]
+      },
+      {
+        "id": "n2",
+        "kind": "source.expression-pedal",
+        "name": "Leslie speed pedal",
+        "x": 80,
+        "y": 540,
+        "ports": [
+          { "id": "out", "label": "MIDI out", "signal": "midi", "direction": "out" }
+        ]
+      },
+      {
+        "id": "n3",
+        "kind": "instrument.plugin",
+        "name": "B3 organ",
+        "x": 520,
+        "y": 220,
+        "ports": [
+          { "id": "midi-in", "label": "MIDI in", "signal": "midi", "direction": "in" },
+          { "id": "audio-l", "label": "Audio L", "signal": "audio", "direction": "out", "config": { "kind": "stereo", "channel": "L" } },
+          { "id": "audio-r", "label": "Audio R", "signal": "audio", "direction": "out", "config": { "kind": "stereo", "channel": "R" } }
+        ],
+        "config": { "pluginUri": "Surge XT", "preset": "Tonewheel" }
+      },
+      {
+        "id": "n4",
+        "kind": "audio.eq",
+        "name": "Leslie sim",
+        "x": 840,
+        "y": 220,
+        "ports": [
+          { "id": "in-l", "label": "In L", "signal": "audio", "direction": "in", "config": { "kind": "stereo", "channel": "L" } },
+          { "id": "in-r", "label": "In R", "signal": "audio", "direction": "in", "config": { "kind": "stereo", "channel": "R" } },
+          { "id": "midi-speed", "label": "Speed CC", "signal": "midi", "direction": "in" },
+          { "id": "out-l", "label": "Out L", "signal": "audio", "direction": "out", "config": { "kind": "stereo", "channel": "L" } },
+          { "id": "out-r", "label": "Out R", "signal": "audio", "direction": "out", "config": { "kind": "stereo", "channel": "R" } }
+        ],
+        "config": { "low": 0, "mid": 0, "high": 0 }
+      },
+      {
+        "id": "n5",
+        "kind": "sink.main-out",
+        "name": "Main output",
+        "x": 1200,
+        "y": 300,
+        "ports": [
+          { "id": "in-l", "label": "In L", "signal": "audio", "direction": "in", "config": { "kind": "stereo", "channel": "L" } },
+          { "id": "in-r", "label": "In R", "signal": "audio", "direction": "in", "config": { "kind": "stereo", "channel": "R" } }
+        ]
+      }
+    ],
+    "wires": [
+      { "id": "w1", "fromNode": "n1", "fromPort": "out", "toNode": "c1", "toPort": "in" },
+      { "id": "w2", "fromNode": "n2", "fromPort": "out", "toNode": "c1", "toPort": "speed" },
+      { "id": "w5", "fromNode": "c1", "fromPort": "out-l", "toNode": "n5", "toPort": "in-l" },
+      { "id": "w6", "fromNode": "c1", "fromPort": "out-r", "toNode": "n5", "toPort": "in-r" },
+      { "id": "w3", "fromNode": "n3", "fromPort": "audio-l", "toNode": "n4", "toPort": "in-l" },
+      { "id": "w4", "fromNode": "n3", "fromPort": "audio-r", "toNode": "n4", "toPort": "in-r" }
+    ],
+    "composites": [
+      {
+        "id": "c1",
+        "name": "B3 + Leslie",
+        "contains": ["n3", "n4"],
+        "locked": true,
+        "promotedPorts": [
+          { "id": "in", "label": "Keys", "direction": "in", "signal": "midi", "internalNode": "n3", "internalPort": "midi-in" },
+          { "id": "speed", "label": "Speed", "direction": "in", "signal": "midi", "internalNode": "n4", "internalPort": "midi-speed" },
+          { "id": "out-l", "label": "Out L", "direction": "out", "signal": "audio", "internalNode": "n4", "internalPort": "out-l" },
+          { "id": "out-r", "label": "Out R", "direction": "out", "signal": "audio", "internalNode": "n4", "internalPort": "out-r" }
+        ],
+        "colorHue": 60
+      }
+    ]
+  }
+}

@@ -1,0 +1,18 @@
+[package]
+name = "stardust-patch"
+description = "Patch-graph data model for Stardust: typed nodes/wires/composites, JSON persistence with schema versioning (ADR-0003), structural validation. Pure data; no audio, IPC, or UI deps."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+authors.workspace = true
+readme.workspace = true
+categories = ["multimedia", "data-structures"]
+keywords = ["patch", "graph", "audio", "midi", "live-performance"]
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }

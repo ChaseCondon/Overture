@@ -1,0 +1,110 @@
+{
+  "kind": "stardust.patch",
+  "schemaVersion": 1,
+  "graph": {
+    "nodes": [
+      {
+        "id": "n1",
+        "kind": "source.keyboard",
+        "name": "Main keyboard",
+        "x": 80,
+        "y": 200,
+        "ports": [
+          { "id": "out", "label": "MIDI out", "signal": "midi", "direction": "out" }
+        ]
+      },
+      {
+        "id": "n2",
+        "kind": "source.sustain-pedal",
+        "name": "Sustain",
+        "x": 80,
+        "y": 460,
+        "ports": [
+          { "id": "out", "label": "MIDI out", "signal": "midi", "direction": "out" }
+        ]
+      },
+      {
+        "id": "n3",
+        "kind": "instrument.plugin",
+        "name": "Piano",
+        "x": 460,
+        "y": 260,
+        "ports": [
+          { "id": "midi-in", "label": "MIDI in", "signal": "midi", "direction": "in" },
+          { "id": "audio-l", "label": "Audio L", "signal": "audio", "direction": "out", "config": { "kind": "stereo", "channel": "L" } },
+          { "id": "audio-r", "label": "Audio R", "signal": "audio", "direction": "out", "config": { "kind": "stereo", "channel": "R" } }
+        ],
+        "config": { "pluginUri": "Surge XT", "preset": "Felt Piano" }
+      },
+      {
+        "id": "n4",
+        "kind": "audio.eq",
+        "name": "EQ",
+        "x": 820,
+        "y": 140,
+        "ports": [
+          { "id": "in-l", "label": "In L", "signal": "audio", "direction": "in", "config": { "kind": "stereo", "channel": "L" } },
+          { "id": "in-r", "label": "In R", "signal": "audio", "direction": "in", "config": { "kind": "stereo", "channel": "R" } },
+          { "id": "out-l", "label": "Out L", "signal": "audio", "direction": "out", "config": { "kind": "stereo", "channel": "L" } },
+          { "id": "out-r", "label": "Out R", "signal": "audio", "direction": "out", "config": { "kind": "stereo", "channel": "R" } }
+        ],
+        "config": { "low": 2, "mid": -1, "high": 3 }
+      },
+      {
+        "id": "n5",
+        "kind": "audio.eq",
+        "name": "Reverb",
+        "x": 820,
+        "y": 440,
+        "ports": [
+          { "id": "in-l", "label": "In L", "signal": "audio", "direction": "in", "config": { "kind": "stereo", "channel": "L" } },
+          { "id": "in-r", "label": "In R", "signal": "audio", "direction": "in", "config": { "kind": "stereo", "channel": "R" } },
+          { "id": "out-l", "label": "Out L", "signal": "audio", "direction": "out", "config": { "kind": "stereo", "channel": "L" } },
+          { "id": "out-r", "label": "Out R", "signal": "audio", "direction": "out", "config": { "kind": "stereo", "channel": "R" } }
+        ],
+        "config": { "low": 0, "mid": 0, "high": 0 }
+      },
+      {
+        "id": "n6",
+        "kind": "audio.mix",
+        "name": "Dry + wet",
+        "x": 1140,
+        "y": 280,
+        "ports": [
+          { "id": "in-1-l", "label": "1 L", "signal": "audio", "direction": "in", "config": { "kind": "stereo", "channel": "L" } },
+          { "id": "in-1-r", "label": "1 R", "signal": "audio", "direction": "in", "config": { "kind": "stereo", "channel": "R" } },
+          { "id": "in-2-l", "label": "2 L", "signal": "audio", "direction": "in", "config": { "kind": "stereo", "channel": "L" } },
+          { "id": "in-2-r", "label": "2 R", "signal": "audio", "direction": "in", "config": { "kind": "stereo", "channel": "R" } },
+          { "id": "out-l", "label": "Out L", "signal": "audio", "direction": "out", "config": { "kind": "stereo", "channel": "L" } },
+          { "id": "out-r", "label": "Out R", "signal": "audio", "direction": "out", "config": { "kind": "stereo", "channel": "R" } }
+        ]
+      },
+      {
+        "id": "n7",
+        "kind": "sink.main-out",
+        "name": "Main output",
+        "x": 1480,
+        "y": 280,
+        "ports": [
+          { "id": "in-l", "label": "In L", "signal": "audio", "direction": "in", "config": { "kind": "stereo", "channel": "L" } },
+          { "id": "in-r", "label": "In R", "signal": "audio", "direction": "in", "config": { "kind": "stereo", "channel": "R" } }
+        ]
+      }
+    ],
+    "wires": [
+      { "id": "w1", "fromNode": "n1", "fromPort": "out", "toNode": "n3", "toPort": "midi-in" },
+      { "id": "w2", "fromNode": "n2", "fromPort": "out", "toNode": "n3", "toPort": "midi-in" },
+      { "id": "w3", "fromNode": "n3", "fromPort": "audio-l", "toNode": "n4", "toPort": "in-l" },
+      { "id": "w4", "fromNode": "n3", "fromPort": "audio-r", "toNode": "n4", "toPort": "in-r" },
+      { "id": "w5", "fromNode": "n3", "fromPort": "audio-l", "toNode": "n5", "toPort": "in-l" },
+      { "id": "w6", "fromNode": "n3", "fromPort": "audio-r", "toNode": "n5", "toPort": "in-r" },
+      { "id": "w7", "fromNode": "n4", "fromPort": "out-l", "toNode": "n6", "toPort": "in-1-l" },
+      { "id": "w8", "fromNode": "n4", "fromPort": "out-r", "toNode": "n6", "toPort": "in-1-r" },
+      { "id": "w9", "fromNode": "n5", "fromPort": "out-l", "toNode": "n6", "toPort": "in-2-l" },
+      { "id": "w10", "fromNode": "n5", "fromPort": "out-r", "toNode": "n6", "toPort": "in-2-r" },
+      { "id": "w11", "fromNode": "n6", "fromPort": "out-l", "toNode": "n7", "toPort": "in-l" },
+      { "id": "w12", "fromNode": "n6", "fromPort": "out-r", "toNode": "n7", "toPort": "in-r" }
+    ],
+    "composites": []
+  }
+}

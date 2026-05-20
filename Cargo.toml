@@ -8,6 +8,7 @@ members = [
     "crates/stardust-dsp",
     "crates/stardust-rt",
     "crates/stardust-ipc",
+    "crates/stardust-patch",
     "crates/stardust-poc",
     "crates/stardust-sfz",
 ]
@@ -52,6 +53,10 @@ hound = "3"
 thiserror = "2"
 anyhow = "1"
 
+# Serialization (patch graph + future persisted formats)
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
 # Logging
 tracing = "0.1"
 
@@ -62,6 +67,7 @@ stardust-plugin = { path = "crates/stardust-plugin", version = "0.0.1" }
 stardust-dsp = { path = "crates/stardust-dsp", version = "0.0.1" }
 stardust-rt = { path = "crates/stardust-rt", version = "0.0.1" }
 stardust-ipc = { path = "crates/stardust-ipc", version = "0.0.1" }
+stardust-patch = { path = "crates/stardust-patch", version = "0.0.1" }
 stardust-sfz = { path = "crates/stardust-sfz", version = "0.0.1" }
 
 [profile.release]
