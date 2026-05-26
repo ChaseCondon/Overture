@@ -23,8 +23,10 @@
 #![warn(missing_docs)]
 
 pub mod envelope;
+pub mod eq;
 
 pub use envelope::{AdsrConfig, EnvState, Envelope};
+pub use eq::{Eq, EqGains};
 
 use std::f32::consts::TAU;
 use stardust_midi::MidiMessage;

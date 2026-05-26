@@ -13,6 +13,6 @@ pub mod validate;
 pub use document::{Header, PatchDocument, CURRENT_SCHEMA_VERSION, PATCH_KIND};
 pub use types::{
     CompositeBlock, CompositeId, GraphNode, NodeClass, NodeId, NodeKind, PatchGraph, Port,
-    PortConfig, PortDirection, PortId, PromotedPort, SignalKind, Wire, WireId,
+    PortConfig, PortDirection, PortId, PromotedPort, SignalKind, StereoChannel, Wire, WireId,
 };
 pub use validate::ValidationError;
