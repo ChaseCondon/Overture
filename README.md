@@ -68,7 +68,10 @@ See [`examples/`](examples/) for runnable code.
 
 ## Documentation
 
-- **[Project wiki](https://github.com/StardustMT/stardust-core/wiki)** — architecture, API guides, examples, contributing
+- **[Engine architecture](https://stardustmt.github.io/docs/pit/architecture/engine/)** — the Plan model, RT guarantees, per-version trajectory, crate layout
+- **[Roadmap](https://stardustmt.github.io/docs/pit/roadmap/)** — v0.6.0 → v1.0.0 with exit criteria (shared with [`stardust-pit`](https://github.com/StardustMT/stardust-pit))
+- **[Project board](https://github.com/orgs/StardustMT/projects/1)** — every open + closed work item across both repos
+- **[Locked decisions](https://stardustmt.github.io/docs/pit/decisions/)** — what's baked in and where it lives
 - **[API reference (docs.rs)](https://docs.rs/stardust-core)** — published with the first crates.io release
 
 ## Modules
@@ -88,7 +91,7 @@ See [`examples/`](examples/) for runnable code.
 
 Contributions welcome — especially around plugin-format support, DSP, and platform-specific audio backends.
 
-See [CONTRIBUTING.md](CONTRIBUTING.md). Open an [issue](https://github.com/StardustMT/stardust-core/issues) or [discussion](https://github.com/StardustMT/stardust-core/discussions).
+See [CONTRIBUTING.md](CONTRIBUTING.md). Issue templates are in place — pick **Feature** / **Task** / **Bug** when opening a [new issue](https://github.com/StardustMT/stardust-core/issues/new/choose).
 
 ## License
 

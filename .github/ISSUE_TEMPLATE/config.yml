@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Stardust Pit docs (architecture + engine)
+    url: https://stardustmt.github.io/docs/pit/architecture/engine/
+    about: stardust-core powers Stardust Pit — engine architecture, Plan model, crate layout.
+  - name: Project board
+    url: https://github.com/orgs/StardustMT/projects/1
+    about: Shared roadmap + every open + closed work item across both repos.
+  - name: Contributing guide
+    url: https://github.com/StardustMT/stardust-core/blob/main/CONTRIBUTING.md
+    about: How issues + commits + PRs work in this project.
